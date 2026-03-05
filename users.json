@@ -392,5 +392,26 @@
     "cart": [],
     "orders": [],
     "history": []
+  },
+  {
+    "username": "Yuvaan Kaarthikeyaa",
+    "password": "aykCC@1206",
+    "cart": [],
+    "orders": [
+      {
+        "items": [
+          {
+            "title": "Samsung",
+            "price": "87999",
+            "rating": "4.5",
+            "image": "https://m.media-amazon.com/images/I/71N8YkTS0TL._AC_UY218_.jpg",
+            "deliveryDays": 3
+          }
+        ],
+        "paymentMethod": "UPI",
+        "orderDate": "5/3/2026, 12:01:56 am"
+      }
+    ],
+    "history": []
   }
 ]
