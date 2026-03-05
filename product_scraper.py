@@ -94,7 +94,7 @@ try:
             continue
 
 except Exception as e:
-    pass # If the whole browser crashes, just return whatever data we collected so far
+    pass # If the whole browser crashes, just return whatever data we collected so far.
 
 finally:
     driver.quit()
