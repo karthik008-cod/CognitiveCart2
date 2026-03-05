@@ -278,7 +278,7 @@ app.post("/chatbot", async (req, res) => {
     res.json({ reply: "AI assistant is temporarily unavailable." });
   }
 });
-
+ 
 /* ================= START SERVER ================= */
 app.listen(3000, () => {
   console.log("🔥 Cognitive Cart backend running on port 3000");
