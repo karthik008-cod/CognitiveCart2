@@ -61,14 +61,16 @@
     <div class="modal-content reveal-modal">
       <h3 id="authTitle">Sign In</h3>
       
-      <input id="username" placeholder="Username" autocomplete="username">
-      <div class="password-box">
-        <input id="password" type="password" placeholder="Password">
-        <button type="button" onclick="togglePassword()" class="show-pass">Show</button>
+      <div id="auth-box">
+          <input type="text" id="username" placeholder="Enter Email" />
+
+          <button onclick="sendOTP()">Send OTP</button>
+
+          <input type="text" id="otp" placeholder="Enter OTP" />
+
+          <button onclick="verifyOTP()">Login / Register</button>
       </div>
-      
-      <button onclick="submitAuth()" id="authSubmitBtn">Submit</button>
-      
+          
       <p><span class="link" id="authToggleLink" onclick="toggleAuth()">Switch to Sign Up</span></p>
       <p id="authMessage" style="color: var(--accent); font-weight: bold;"></p>
       
@@ -223,67 +225,8 @@
     // Visually update the text so the user knows what they are doing
     function updateAuthUI() {
       document.getElementById("authTitle").innerText = isSignUp ? "Create Account" : "Welcome Back";
-      document.getElementById("authSubmitBtn").innerText = isSignUp ? "Sign Up" : "Login";
       document.getElementById("authToggleLink").innerText = isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up";
     }
-
-    async function submitAuth() {
-  const username = document.getElementById("username").value.trim();
-  const password = document.getElementById("password").value.trim();
-  
-  if (!username || !password) {
-    document.getElementById("authMessage").innerText = "Please fill in all fields.";
-    return;
-  }
-
-  // PASSWORD STRENGTH CHECK (only during signup)
-  if (isSignUp) {
-    const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
-
-    if (!strongPassword.test(password)) {
-      document.getElementById("authMessage").innerText =
-        "❌ Weak password! Use 8+ chars with uppercase, lowercase, number & special symbol.";
-      return;
-    }
-  }
-
-  const url = isSignUp ? "/signup" : "/signin";
-
-  try {
-    const res = await fetch(`http://localhost:3000${url}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password })
-    });
-
-    const data = await res.json();
-    document.getElementById("authMessage").innerText = data.message;
-
-    if (data.message === "Login successful" || data.message === "Signup successful") {
-      localStorage.setItem("loggedUser", username);
-      showUser(username);
-      setTimeout(() => closeModal('authModal'), 1000);
-    }
-  } catch (err) {
-    document.getElementById("authMessage").innerText = "Server error. Is Node running?";
-  }
-}
-
-function togglePassword(){
-
-  const passField = document.getElementById("password");
-  const btn = document.querySelector(".show-pass");
-
-  if(passField.type === "password"){
-    passField.type = "text";
-    btn.innerText = "Hide";
-  }
-  else{
-    passField.type = "password";
-    btn.innerText = "Show";
-  }
-
-}
 
     function showUser(username) {
       document.getElementById("userControls").innerHTML = `
@@ -524,6 +467,76 @@ function togglePassword(){
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
       }
     });
+
+async function sendOTP() {
+  const username = document.getElementById("username").value.trim();
+
+  if (!username.includes("@")) {
+    document.getElementById("authMessage").innerText = "Enter a valid email ❌";
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:3000/send-otp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("authMessage").innerText = data.message;
+
+  } catch (err) {
+    document.getElementById("authMessage").innerText = "Server error ❌";
+    console.error(err);
+  }
+}
+
+async function verifyOTP() {
+  const username = document.getElementById("username").value.trim();
+  const otp = document.getElementById("otp").value.trim();
+
+  if (!otp) {
+    document.getElementById("authMessage").innerText = "Enter OTP ❌";
+    return;
+  }
+
+  try {
+    const res = await fetch("http://localhost:3000/verify-otp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ username, otp })
+    });
+
+    const data = await res.json();
+
+    document.getElementById("authMessage").innerText = data.message;
+
+    if (data.success) {
+      localStorage.setItem("loggedUser", username);
+      showUser(username);
+
+      setTimeout(() => {
+        closeModal('authModal');
+      }, 1000);
+    }
+
+  } catch (err) {
+    document.getElementById("authMessage").innerText = "Verification failed ❌";
+    console.error(err);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("username").addEventListener("input", () => {
+    document.getElementById("authMessage").innerText = "";
+  });
+});
   </script>
 </body>
 </html>
