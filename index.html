@@ -1,66 +1,74 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cognitive Cart</title>
-  <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-  <div class="top-bar">
-    <h2>🛒 Cognitive Cart</h2>
-    <div class="user-controls" id="userControls">
-      <button onclick="openAuthModal(false)">Login / Sign Up</button>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cognitive Cart</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="top-bar">
+      <h2 onclick="goHome()" style="cursor: pointer">🛒 Cognitive Cart</h2>
+      <div class="user-controls" id="userControls">
+        <button onclick="openAuthModal(false)">Login / Sign Up</button>
+      </div>
     </div>
-  </div>
 
-  <div class="hero-search reveal active">
-    <h1>Find the Best Deals instantly</h1>
-    <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)">
-    <button type="button" onclick="search()" class="glow-btn">Compare Prices</button>
-    
-    <div class="preferences">
-      <label>Sort By:</label>
-      <select id="sortOption" onchange="applySort()">
-        <option value="">Default</option>
-        <option value="price">Lowest Price</option>
-        <option value="rating">Highest Rating</option>
-        <option value="delivery">Fast Delivery</option>
-      </select>
+    <div class="hero-search reveal active">
+      <h1>Find the Best Deals instantly</h1>
+      <input
+        id="item"
+        placeholder="Search anything (fridge / iphone / apple fruit)"
+      />
+      <button type="button" onclick="search()" class="glow-btn">
+        Compare Prices
+      </button>
+
+      <div class="preferences">
+        <label>Sort By:</label>
+        <select id="sortOption" onchange="applySort()">
+          <option value="">Default</option>
+          <option value="price">Lowest Price</option>
+          <option value="rating">Highest Rating</option>
+          <option value="delivery">Fast Delivery</option>
+        </select>
+      </div>
+      <p id="time" class="text-muted"></p>
     </div>
-    <p id="time" class="text-muted"></p>
-  </div>
 
-  <div id="aiBox" class="reveal"></div>
+    <div id="aiBox" class="reveal"></div>
 
-  <div class="container store-section" id="storesSection" style="display: none;">
-    <div class="col reveal">
-      <h3 class="store-header">Amazon</h3>
-      <div id="amazon" class="product-grid"></div>
+    <div
+      class="container store-section"
+      id="storesSection"
+      style="display: none"
+    >
+      <div class="col reveal">
+        <h3 class="store-header">Amazon</h3>
+        <div id="amazon" class="product-grid"></div>
+      </div>
+      <div class="col reveal" style="transition-delay: 0.2s">
+        <h3 class="store-header">Flipkart</h3>
+        <div id="flipkart" class="product-grid"></div>
+      </div>
     </div>
-    <div class="col reveal" style="transition-delay: 0.2s;">
-      <h3 class="store-header">Flipkart</h3>
-      <div id="flipkart" class="product-grid"></div>
+
+    <div id="cart" class="user-section reveal">
+      <h3>🛒 Cart (empty)</h3>
     </div>
-  </div>
+    <div id="orders" class="user-section reveal">
+      <h3>📦 My Orders (empty)</h3>
+    </div>
+    <div id="history" class="user-section reveal">
+      <h3>🕘 History (empty)</h3>
+    </div>
 
-  <div id="cart" class="user-section reveal">
-    <h3>🛒 Cart (empty)</h3>
-  </div>
-  <div id="orders" class="user-section reveal">
-    <h3>📦 My Orders (empty)</h3>
-  </div>
-  <div id="history" class="user-section reveal">
-    <h3>🕘 History (empty)</h3>
-  </div>
+    <div id="authModal" class="modal">
+      <div class="modal-content reveal-modal">
+        <h3 id="authTitle">Sign In</h3>
 
-  <div id="authModal" class="modal">
-    <div class="modal-content reveal-modal">
-      <h3 id="authTitle">Sign In</h3>
-      
-      <div id="auth-box">
+        <div id="auth-box">
           <input type="text" id="username" placeholder="Enter Email" />
 
           <button onclick="sendOTP()">Send OTP</button>
@@ -68,123 +76,187 @@
           <input type="text" id="otp" placeholder="Enter OTP" />
 
           <button onclick="verifyOTP()">Login / Register</button>
+        </div>
+
+        <p>
+          <span class="link" id="authToggleLink" onclick="toggleAuth()"
+            >Switch to Sign Up</span
+          >
+        </p>
+        <p id="authMessage" style="color: var(--accent); font-weight: bold"></p>
+
+        <button class="close-modal-btn" onclick="closeModal('authModal')">
+          Cancel
+        </button>
       </div>
-          
-      <p><span class="link" id="authToggleLink" onclick="toggleAuth()">Switch to Sign Up</span></p>
-      <p id="authMessage" style="color: var(--accent); font-weight: bold;"></p>
-      
-      <button class="close-modal-btn" onclick="closeModal('authModal')">Cancel</button>
     </div>
-  </div>
 
-  <div id="paymentModal" class="modal">
-    <div class="modal-content reveal-modal">
-      <h3>Select Payment Method</h3>
-      <select id="paymentSelect">
-        <option value="">Choose</option>
-        <option value="UPI">UPI</option>
-        <option value="Card">Card</option>
-        <option value="COD">Cash On Delivery</option>
-      </select>
-      <button onclick="confirmPayment()">Confirm Payment</button>
-      <button class="close-modal-btn" onclick="closeModal('paymentModal')">Cancel</button>
+    <div id="paymentModal" class="modal">
+      <div class="modal-content reveal-modal">
+        <h3>Select Payment Method</h3>
+        <select id="paymentSelect">
+          <option value="">Choose</option>
+          <option value="UPI">UPI</option>
+          <option value="Card">Card</option>
+          <option value="COD">Cash On Delivery</option>
+        </select>
+        <button onclick="confirmPayment()">Confirm Payment</button>
+        <button class="close-modal-btn" onclick="closeModal('paymentModal')">
+          Cancel
+        </button>
+      </div>
     </div>
-  </div>
 
-  <div id="chatToggle">💬</div>
-  <div id="chatBox" class="chat-hidden">
-    <div class="chat-header">
-      Cognitive Cart Assistant
-      <span class="close-btn" id="closeChat">✖</span>
+    <div id="chatToggle">💬</div>
+    <div id="chatBox" class="chat-hidden">
+      <div class="chat-header">
+        Cognitive Cart Assistant
+        <span class="close-btn" id="closeChat">✖</span>
+      </div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input id="chatInput" placeholder="Ask something..." />
+        <button id="voiceBtn" title="Voice Input">🎙</button>
+        <button id="sendBtn">Send</button>
+      </div>
     </div>
-    <div id="chatMessages" class="chat-messages"></div>
-    <div class="chat-input">
-      <input id="chatInput" placeholder="Ask something..." />
-      <button id="voiceBtn" title="Voice Input">🎙</button>
-      <button id="sendBtn">Send</button>
-    </div>
-  </div>
 
-  <script>
-    // --- SCROLL ANIMATION OBSERVER ---
-    function observeElements() {
-      const observer = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('active');
+    <script>
+      // --- SCROLL ANIMATION OBSERVER ---
+      function observeElements() {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add("active");
+              }
+            });
+          },
+          { threshold: 0.1 },
+        );
+        document
+          .querySelectorAll(".reveal")
+          .forEach((el) => observer.observe(el));
+      }
+
+      // Run observer on load
+      window.onload = function () {
+        const user = localStorage.getItem("loggedUser");
+        if (user) showUser(user);
+
+        observeElements();
+
+        const lastSearch = localStorage.getItem("lastSearch");
+        const amazon = JSON.parse(localStorage.getItem("amazonData")) || [];
+        const flipkart = JSON.parse(localStorage.getItem("flipkartData")) || [];
+
+        if (lastSearch && (amazon.length || flipkart.length)) {
+          document.getElementById("item").value = lastSearch;
+
+          // 🔥 ADD THIS LINE (FIX)
+          document.querySelector(".hero-search").style.display = "flex";
+
+          document.getElementById("storesSection").style.display = "flex";
+
+          amazonData = amazon;
+          flipkartData = flipkart;
+
+          render("amazon", amazonData);
+          render("flipkart", flipkartData);
+
+          setTimeout(observeElements, 100);
+        }
+      };
+      let amazonData = [];
+      let flipkartData = [];
+      let currentSort = "";
+
+      async function search() {
+        const q = document.getElementById("item").value;
+        if (!q) return;
+
+        document.getElementById("storesSection").style.display = "flex";
+        document.getElementById("amazon").innerHTML = "<p>Loading...</p>";
+        document.getElementById("flipkart").innerHTML = "<p>Loading...</p>";
+
+        try {
+          const res = await fetch(`http://localhost:3000/search?q=${q}`);
+          const data = await res.json();
+
+          localStorage.setItem("lastSearch", q);
+          localStorage.setItem("amazonData", JSON.stringify(data.amazon));
+          localStorage.setItem("flipkartData", JSON.stringify(data.flipkart));
+
+          // Check if the backend sent an error message
+          if (data.error) {
+            const cachedAmazon =
+              JSON.parse(localStorage.getItem("amazonData")) || [];
+            const cachedFlipkart =
+              JSON.parse(localStorage.getItem("flipkartData")) || [];
+
+            if (cachedAmazon.length || cachedFlipkart.length) {
+              document.getElementById("time").innerText =
+                "⚡ Showing last saved results";
+
+              document.getElementById("storesSection").style.display = "flex";
+
+              render("amazon", cachedAmazon);
+              render("flipkart", cachedFlipkart);
+            } else {
+              document.getElementById("amazon").innerHTML =
+                `<p style="color:red;">${data.error}</p>`;
+              document.getElementById("flipkart").innerHTML =
+                `<p style="color:red;">${data.error}</p>`;
+            }
+
+            return;
           }
-        });
-      }, { threshold: 0.1 });
-      document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
-    }
-    
-    // Run observer on load
-    window.onload = function() {
-      const user = localStorage.getItem("loggedUser");
-      if(user) showUser(user);
-      observeElements();
-    };
 
-    let amazonData = [];
-    let flipkartData = [];
-    let currentSort = "";   
+          document.getElementById("time").innerText =
+            "Last updated: " + data.lastUpdated;
 
-    async function search() {
-      const q = document.getElementById("item").value;
-      if (!q) return;
+          amazonData = data.amazon || [];
+          flipkartData = data.flipkart || [];
 
-      document.getElementById("storesSection").style.display = "flex";
-      document.getElementById("amazon").innerHTML = "<p>Loading...</p>";
-      document.getElementById("flipkart").innerHTML = "<p>Loading...</p>";
-
-      try {
-        const res = await fetch(`http://localhost:3000/search?q=${q}`);
-        const data = await res.json();
-
-        // Check if the backend sent an error message
-        if (data.error) {
-           document.getElementById("amazon").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
-           document.getElementById("flipkart").innerHTML = `<p style="color: red;">Error: ${data.error}</p>`;
-           return; // Stop the function here
-        }
-
-        document.getElementById("time").innerText = "Last updated: " + data.lastUpdated;
-
-        amazonData = data.amazon || [];
-        flipkartData = data.flipkart || [];
-
-        render("amazon", amazonData);
-        render("flipkart", flipkartData);
-        await getAIRecommendation();
-      } catch (err) {
-        console.error("Search error:", err);
-        document.getElementById("amazon").innerHTML = "<p>Failed to connect to server.</p>";
-        document.getElementById("flipkart").innerHTML = "<p>Failed to connect to server.</p>";
-      }
-    }
-
-    function render(id, list) {
-      let html = "";
-      let highlightItem = null;
-
-      // FIX: Only try to use .reduce() if the list actually has items in it!
-      if (list && list.length > 0) {
-        if(currentSort === "price") {
-          highlightItem = list.reduce((a,b) => a.price < b.price ? a : b);
-        } else if(currentSort === "rating") {
-          highlightItem = list.reduce((a,b) => (a.rating||0) > (b.rating||0) ? a : b);
-        } else if(currentSort === "delivery") {
-          highlightItem = list.reduce((a,b) => (a.deliveryDays||999) < (b.deliveryDays||999) ? a : b);
+          render("amazon", amazonData);
+          render("flipkart", flipkartData);
+          await getAIRecommendation();
+        } catch (err) {
+          console.error("Search error:", err);
+          document.getElementById("amazon").innerHTML =
+            "<p>Failed to connect to server.</p>";
+          document.getElementById("flipkart").innerHTML =
+            "<p>Failed to connect to server.</p>";
         }
       }
 
-      list.forEach((p, index) => {
-        if(!p.deliveryDays) p.deliveryDays = Math.floor(Math.random()*5)+1;     
+      function render(id, list) {
+        let html = "";
+        let highlightItem = null;
 
-        const highlight = highlightItem && highlightItem.title === p.title;
-        const encoded = encodeURIComponent(JSON.stringify(p));
+        // FIX: Only try to use .reduce() if the list actually has items in it!
+        if (list && list.length > 0) {
+          if (currentSort === "price") {
+            highlightItem = list.reduce((a, b) => (a.price < b.price ? a : b));
+          } else if (currentSort === "rating") {
+            highlightItem = list.reduce((a, b) =>
+              (a.rating || 0) > (b.rating || 0) ? a : b,
+            );
+          } else if (currentSort === "delivery") {
+            highlightItem = list.reduce((a, b) =>
+              (a.deliveryDays || 999) < (b.deliveryDays || 999) ? a : b,
+            );
+          }
+        }
 
-        html += `
+        list.forEach((p, index) => {
+          if (!p.deliveryDays)
+            p.deliveryDays = Math.floor(Math.random() * 5) + 1;
+
+          const highlight = highlightItem && highlightItem.title === p.title;
+          const encoded = encodeURIComponent(JSON.stringify(p));
+
+          html += `
         <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay: ${index * 0.1}s">
           <img src="${p.image}" onerror="this.onerror=null; this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png';" alt="product">
           <h4>${p.title}</h4>
@@ -194,359 +266,415 @@
           ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
           <button class="add-cart-btn" data-product="${encoded}" onclick="addToCart(this)">Add to Cart</button>
         </div>`;
-      });
+        });
 
-      document.getElementById(id).innerHTML = html || "<p>No results found</p>";
-      setTimeout(observeElements, 100); 
-    }
+        document.getElementById(id).innerHTML =
+          html || "<p>No results found</p>";
+        setTimeout(observeElements, 100);
+      }
 
-    /* ================= LOGIN SYSTEM ================= */
-    let isSignUp = false;
+      /* ================= LOGIN SYSTEM ================= */
+      let isSignUp = false;
 
-    // Open modal directly into Sign In or Sign Up mode
-    function openAuthModal(modeIsSignUp) {
-      isSignUp = modeIsSignUp;
-      updateAuthUI();
-      document.getElementById("authModal").style.display = "flex";
-      document.getElementById("authMessage").innerText = ""; // Clear old messages
-    }
+      // Open modal directly into Sign In or Sign Up mode
+      function openAuthModal(modeIsSignUp) {
+        isSignUp = modeIsSignUp;
+        updateAuthUI();
+        document.getElementById("authModal").style.display = "flex";
+        document.getElementById("authMessage").innerText = ""; // Clear old messages
+      }
 
-    function closeModal(id) { 
-      document.getElementById(id).style.display = "none"; 
-    }
+      function closeModal(id) {
+        document.getElementById(id).style.display = "none";
+      }
 
-    // Toggle back and forth inside the modal
-    function toggleAuth() {
-      isSignUp = !isSignUp;
-      updateAuthUI();
-    }
+      // Toggle back and forth inside the modal
+      function toggleAuth() {
+        isSignUp = !isSignUp;
+        updateAuthUI();
+      }
 
-    // Visually update the text so the user knows what they are doing
-function updateAuthUI() {
-  const title = document.getElementById("authTitle");
-  const toggle = document.getElementById("authToggleLink");
-  const message = document.getElementById("authMessage");
+      // Visually update the text so the user knows what they are doing
+      function updateAuthUI() {
+        const title = document.getElementById("authTitle");
+        const toggle = document.getElementById("authToggleLink");
+        const message = document.getElementById("authMessage");
 
-  if (isSignUp) {
-    title.innerText = "Create your account 🚀";
-    toggle.innerText = "Already have an account? Login";
-    message.innerText = "Enter your email to get started";
-  } else {
-    title.innerText = "Welcome back 👋";
-    toggle.innerText = "New here? Create an account";
-    message.innerText = "Enter your email to continue";
-  }
-}
+        if (isSignUp) {
+          title.innerText = "Create your account 🚀";
+          toggle.innerText = "Already have an account? Login";
+          message.innerText = "Enter your email to get started";
+        } else {
+          title.innerText = "Welcome back 👋";
+          toggle.innerText = "New here? Create an account";
+          message.innerText = "Enter your email to continue";
+        }
+      }
 
-    function showUser(username) {
-      document.getElementById("userControls").innerHTML = `
+      function showUser(username) {
+        document.getElementById("userControls").innerHTML = `
         <span class="welcome-text">👤 ${username}</span>
         <button onclick="showSection('orders')" style="background: transparent; border: 1px solid var(--primary);">My Orders</button>
         <button onclick="showSection('history')" style="background: transparent; border: 1px solid var(--primary);">History</button>
         <button onclick="showSection('cart')">Cart</button>
         <button class="logout-btn" onclick="logout()">Logout</button>
       `;
-    }
-
-    function logout() {
-      localStorage.removeItem("loggedUser");
-      location.reload();
-    }
-
-    /* ================= SECTIONS & CART ================= */
-    function showSection(id){
-      document.getElementById("storesSection").style.display="none";
-      document.querySelector(".hero-search").style.display="none";
-      document.getElementById("aiBox").style.display="none";
-
-      document.querySelectorAll(".user-section").forEach(sec => sec.style.display="none");
-      document.getElementById(id).style.display="block";
-
-      if(id==="cart") loadCart();
-      if(id==="orders") loadOrders();
-      if(id==="history") loadHistory();
-    }
-
-    async function addToCart(btn){
-      try{
-        const username = localStorage.getItem("loggedUser");
-        if(!username){ alert("Please login first"); openModal(); return; }
-
-        const prodString = btn.dataset.product || '';
-        const product = JSON.parse(decodeURIComponent(prodString));
-
-        const res = await fetch("http://localhost:3000/add-to-cart",{
-          method:"POST",
-          headers:{ "Content-Type":"application/json"},
-          body: JSON.stringify({ username, product })
-        });
-        const data = await res.json();
-        alert(data.message || "Added to cart");
-      } catch(e){
-        console.error("addToCart error", e);
       }
-    }
 
-    async function loadCart(){
-      const username = localStorage.getItem("loggedUser");
-      if(!username) return;
+      function logout() {
+        localStorage.removeItem("loggedUser");
+        location.reload();
+      }
 
-      const res = await fetch(`http://localhost:3000/cart/${username}`);
-      const cart = await res.json();
-      
-      let html= "<h3>🛒 Your Cart</h3><div class='product-grid'>";
-      cart.forEach((p, i) => {
-        html+=`
-        <div class="card reveal" style="transition-delay: ${i*0.1}s">
+      /* ================= SECTIONS & CART ================= */
+      function showSection(id) {
+        document.getElementById("storesSection").style.display = "none";
+        document.querySelector(".hero-search").style.display = "none";
+        document.getElementById("aiBox").style.display = "none";
+
+        document
+          .querySelectorAll(".user-section")
+          .forEach((sec) => (sec.style.display = "none"));
+        document.getElementById(id).style.display = "block";
+
+        if (id === "cart") loadCart();
+        if (id === "orders") loadOrders();
+        if (id === "history") loadHistory();
+      }
+
+      async function addToCart(btn) {
+        console.log("BUTTON CLICKED");
+        try {
+          const username = localStorage.getItem("loggedUser");
+          if (!username) {
+            alert("Please login first");
+            openModal();
+            return;
+          }
+
+          const prodString = btn.dataset.product || "";
+          const product = JSON.parse(decodeURIComponent(prodString));
+
+          const res = await fetch("http://localhost:3000/add-to-cart", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, product }),
+          });
+          const data = await res.json();
+          alert(data.message || "Added to cart");
+        } catch (e) {
+          console.error("addToCart error", e);
+        }
+      }
+
+      async function loadCart() {
+        const username = localStorage.getItem("loggedUser");
+        if (!username) return;
+
+        const res = await fetch(`http://localhost:3000/cart/${username}`);
+        const cart = await res.json();
+
+        let html = "<h3>🛒 Your Cart</h3><div class='product-grid'>";
+        cart.forEach((p, i) => {
+          html += `
+        <div class="card reveal" style="transition-delay: ${i * 0.1}s">
           <img src="${p.image}">
           <h4>${p.title}</h4>
           <p class="price">₹${p.price}</p>
         </div>`;
-      });
-      html += "</div>";
+        });
+        html += "</div>";
 
-      if(cart.length) html += `<button class="glow-btn" style="margin-top:20px;" onclick="placeOrder()">Place Order</button>`;
-      document.getElementById("cart").innerHTML = html;
-      setTimeout(observeElements, 100);
-    }
+        if (cart.length)
+          html += `<button class="glow-btn" style="margin-top:20px;" onclick="placeOrder()">Place Order</button>`;
+        document.getElementById("cart").innerHTML = html;
+        setTimeout(observeElements, 100);
+      }
 
-    /* ================= PAYMENT & ORDERS ================= */
-    function placeOrder(){ document.getElementById("paymentModal").style.display="flex"; }
+      /* ================= PAYMENT & ORDERS ================= */
+      function placeOrder() {
+        document.getElementById("paymentModal").style.display = "flex";
+      }
 
-    async function confirmPayment(){
-      const paymentMethod = document.getElementById("paymentSelect").value;
-      if(!paymentMethod){ alert("Please select a payment method"); return; }
-      
-      const username = localStorage.getItem("loggedUser");
-      const res = await fetch("http://localhost:3000/place-order",{
-          method:"POST",
-          headers:{ "Content-Type":"application/json"},
-          body: JSON.stringify({ username, paymentMethod })
-      });
-      const data = await res.json();
-      alert(data.message);
-      closeModal('paymentModal');
-      showSection('orders');
-    }
+      async function confirmPayment() {
+        const paymentMethod = document.getElementById("paymentSelect").value;
+        if (!paymentMethod) {
+          alert("Please select a payment method");
+          return;
+        }
 
-    async function loadOrders(){
-      const username = localStorage.getItem("loggedUser");
-      const res = await fetch(`http://localhost:3000/orders/${username}`);
-      const orders = await res.json();
-      
-      let html="<h3>📦 My Orders</h3>";
-      orders.forEach((order, index) => {
-        html += `<div class="order-group reveal">
+        const username = localStorage.getItem("loggedUser");
+        const res = await fetch("http://localhost:3000/place-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, paymentMethod }),
+        });
+        const data = await res.json();
+        alert(data.message);
+        closeModal("paymentModal");
+        showSection("orders");
+      }
+
+      async function loadOrders() {
+        const username = localStorage.getItem("loggedUser");
+        const res = await fetch(`http://localhost:3000/orders/${username}`);
+        const orders = await res.json();
+
+        let html = "<h3>📦 My Orders</h3>";
+        orders.forEach((order, index) => {
+          html += `<div class="order-group reveal">
           <h4>Order #${index + 1} <span style="font-size:0.8rem; color:var(--text-muted)">(${order.orderDate || "N/A"})</span></h4>
           <p><small>Payment: ${order.paymentMethod || "Unknown"}</small></p>
           <div class="product-grid">`;
-        
-        const items = order.items || [order]; // handle legacy format
-        items.forEach(p => {
-          html+=`<div class="card"><img src="${p.image}"><h5>${p.title}</h5><p class="price">₹${p.price}</p></div>`;
+
+          const items = order.items || [order]; // handle legacy format
+          items.forEach((p) => {
+            html += `<div class="card"><img src="${p.image}"><h5>${p.title}</h5><p class="price">₹${p.price}</p></div>`;
+          });
+          html += `</div></div><hr style="border-color:var(--glass-border); margin:20px 0;">`;
         });
-        html += `</div></div><hr style="border-color:var(--glass-border); margin:20px 0;">`;
-      });
 
-      document.getElementById("orders").innerHTML = html || "No orders yet";
-      setTimeout(observeElements, 100);
-    }
+        document.getElementById("orders").innerHTML = html || "No orders yet";
+        setTimeout(observeElements, 100);
+      }
 
-    async function loadHistory(){
-      const username = localStorage.getItem("loggedUser");
-      const res = await fetch(`http://localhost:3000/history/${username}`);
-      const history = await res.json();
-      
-      let html = "<h3>🕘 Search History</h3><ul style='list-style:none; padding:0;'>";
-      history.forEach((h, i) => {
-        html += `<li class="reveal" style="background:var(--glass-bg); padding:15px; margin-bottom:10px; border-radius:8px; border:1px solid var(--glass-border); transition-delay:${i*0.05}s">
+      async function loadHistory() {
+        const username = localStorage.getItem("loggedUser");
+        const res = await fetch(`http://localhost:3000/history/${username}`);
+        const history = await res.json();
+
+        let html =
+          "<h3>🕘 Search History</h3><ul style='list-style:none; padding:0;'>";
+        history.forEach((h, i) => {
+          html += `<li class="reveal" style="background:var(--glass-bg); padding:15px; margin-bottom:10px; border-radius:8px; border:1px solid var(--glass-border); transition-delay:${i * 0.05}s">
           <strong>${h.searchQuery}</strong> - <small class="text-muted">${h.time}</small>
         </li>`;
-      });
-      html += "</ul>";
-      document.getElementById("history").innerHTML = html || "No search history";
-      setTimeout(observeElements, 100);
-    }
-
-    /* ================= SORTING ================= */
-    function applySort(){
-      currentSort = document.getElementById("sortOption").value;
-      let a = [...amazonData], f = [...flipkartData];
-
-      const multiSort = (x,y) => {
-        if(currentSort === "price") return (parseFloat(x.price)||0) - (parseFloat(y.price)||0);
-        if(currentSort === "rating") return (parseFloat(y.rating)||0) - (parseFloat(x.rating)||0);
-        if(currentSort === "delivery") return (x.deliveryDays||0) - (y.deliveryDays||0);
-        return 0;
-      };
-
-      if(currentSort) { a.sort(multiSort); f.sort(multiSort); }
-      render("amazon", a);
-      render("flipkart", f);
-    }
-
-    /* ================= AI ================= */
-    async function getAIRecommendation(){
-      const allProducts = [...amazonData, ...flipkartData];
-      const aiBox = document.getElementById("aiBox");
-      
-      aiBox.innerHTML = `<div class="ai-box loading">🧠 AI is analyzing products...</div>`;
-      aiBox.classList.add("active");
-
-      try{
-        const res = await fetch("http://localhost:3000/ai-recommendation",{
-          method:"POST",
-          headers:{ "Content-Type":"application/json"},
-          body: JSON.stringify({ products: allProducts })
         });
-        const data = await res.json();
-        aiBox.innerHTML = `
+        html += "</ul>";
+        document.getElementById("history").innerHTML =
+          html || "No search history";
+        setTimeout(observeElements, 100);
+      }
+
+      /* ================= SORTING ================= */
+      function applySort() {
+        currentSort = document.getElementById("sortOption").value;
+        let a = [...amazonData],
+          f = [...flipkartData];
+
+        const multiSort = (x, y) => {
+          if (currentSort === "price")
+            return (parseFloat(x.price) || 0) - (parseFloat(y.price) || 0);
+          if (currentSort === "rating")
+            return (parseFloat(y.rating) || 0) - (parseFloat(x.rating) || 0);
+          if (currentSort === "delivery")
+            return (x.deliveryDays || 0) - (y.deliveryDays || 0);
+          return 0;
+        };
+
+        if (currentSort) {
+          a.sort(multiSort);
+          f.sort(multiSort);
+        }
+        render("amazon", a);
+        render("flipkart", f);
+      }
+
+      /* ================= AI ================= */
+      async function getAIRecommendation() {
+        const allProducts = [...amazonData, ...flipkartData];
+        const aiBox = document.getElementById("aiBox");
+
+        aiBox.innerHTML = `<div class="ai-box loading">🧠 AI is analyzing products...</div>`;
+        aiBox.classList.add("active");
+
+        try {
+          const res = await fetch("http://localhost:3000/ai-recommendation", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ products: allProducts }),
+          });
+          const data = await res.json();
+          aiBox.innerHTML = `
           <div class="ai-box reveal active">
             <h3>🧠 AI Recommendation</h3>
             <p>${data.explanation}</p>
           </div>`;
-      } catch(err){
-        aiBox.innerHTML = `<div class="ai-box">AI recommendation unavailable.</div>`;
-      }
-    }
-
-    /* ================= CHATBOT ================= */
-    document.addEventListener("DOMContentLoaded", function(){
-      const chatToggle = document.getElementById("chatToggle");
-      const chatBox = document.getElementById("chatBox");
-      const closeBtn = document.getElementById("closeChat");
-      const sendBtn = document.getElementById("sendBtn");
-      const input = document.getElementById("chatInput");
-      const messagesContainer = document.getElementById("chatMessages");
-      const voiceBtn = document.getElementById("voiceBtn");
-
-      voiceBtn.addEventListener("click", () => {
-        const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-        recognition.lang = "en-US";
-        recognition.start();
-        voiceBtn.innerHTML = "🎙...";
-        
-        recognition.onresult = (event) => {
-          input.value = event.results[0][0].transcript;
-          voiceBtn.innerHTML = "🎙";
-          sendMessage();
-        };
-        recognition.onerror = () => voiceBtn.innerHTML = "🎙";
-        recognition.onend = () => voiceBtn.innerHTML = "🎙";
-      });
-
-      chatToggle.addEventListener("click", () => {
-        chatBox.classList.remove("chat-hidden");
-        chatToggle.style.transform = "scale(0)";
-      });
-
-      closeBtn.addEventListener("click", () => {
-        chatBox.classList.add("chat-hidden");
-        chatToggle.style.transform = "scale(1)";
-      });
-
-      sendBtn.addEventListener("click", sendMessage);
-      input.addEventListener("keypress", (e) => { if(e.key === "Enter") sendMessage(); });
-
-      async function sendMessage(){
-        const message = input.value.trim();
-        if(!message) return;
-
-        addMessage("user", message);
-        input.value = "";
-
-        try {
-          const username = localStorage.getItem("loggedUser");
-          const res = await fetch("http://localhost:3000/chatbot",{
-            method:"POST",
-            headers:{ "Content-Type":"application/json"},
-            body: JSON.stringify({ message, username })
-          });
-          const data = await res.json();
-          addMessage("bot", data.reply);
-        } catch(err) {
-          addMessage("bot", "AI unavailable.");
+        } catch (err) {
+          aiBox.innerHTML = `<div class="ai-box">AI recommendation unavailable.</div>`;
         }
       }
 
-      function addMessage(type, text){
-        const div = document.createElement("div");
-        div.className = `msg ${type} reveal active`; 
-        div.innerText = text;
-        messagesContainer.appendChild(div);
-        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      /* ================= CHATBOT ================= */
+      document.addEventListener("DOMContentLoaded", function () {
+        const chatToggle = document.getElementById("chatToggle");
+        const chatBox = document.getElementById("chatBox");
+        const closeBtn = document.getElementById("closeChat");
+        const sendBtn = document.getElementById("sendBtn");
+        const input = document.getElementById("chatInput");
+        const messagesContainer = document.getElementById("chatMessages");
+        const voiceBtn = document.getElementById("voiceBtn");
+
+        voiceBtn.addEventListener("click", () => {
+          const recognition = new (
+            window.SpeechRecognition || window.webkitSpeechRecognition
+          )();
+          recognition.lang = "en-US";
+          recognition.start();
+          voiceBtn.innerHTML = "🎙...";
+
+          recognition.onresult = (event) => {
+            input.value = event.results[0][0].transcript;
+            voiceBtn.innerHTML = "🎙";
+            sendMessage();
+          };
+          recognition.onerror = () => (voiceBtn.innerHTML = "🎙");
+          recognition.onend = () => (voiceBtn.innerHTML = "🎙");
+        });
+
+        chatToggle.addEventListener("click", () => {
+          chatBox.classList.remove("chat-hidden");
+          chatToggle.style.transform = "scale(0)";
+        });
+
+        closeBtn.addEventListener("click", () => {
+          chatBox.classList.add("chat-hidden");
+          chatToggle.style.transform = "scale(1)";
+        });
+
+        sendBtn.addEventListener("click", sendMessage);
+        input.addEventListener("keypress", (e) => {
+          if (e.key === "Enter") sendMessage();
+        });
+
+        async function sendMessage() {
+          const message = input.value.trim();
+          if (!message) return;
+
+          addMessage("user", message);
+          input.value = "";
+
+          try {
+            const username = localStorage.getItem("loggedUser");
+            const res = await fetch("http://localhost:3000/chatbot", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ message, username }),
+            });
+            const data = await res.json();
+            addMessage("bot", data.reply);
+          } catch (err) {
+            addMessage("bot", "AI unavailable.");
+          }
+        }
+
+        function addMessage(type, text) {
+          const div = document.createElement("div");
+          div.className = `msg ${type} reveal active`;
+          div.innerText = text;
+          messagesContainer.appendChild(div);
+          messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        }
+      });
+
+      async function sendOTP() {
+        const username = document.getElementById("username").value.trim();
+
+        if (!username.includes("@")) {
+          document.getElementById("authMessage").innerText =
+            "Enter a valid email ❌";
+          return;
+        }
+
+        try {
+          const res = await fetch("http://localhost:3000/send-otp", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username }),
+          });
+
+          const data = await res.json();
+
+          document.getElementById("authMessage").innerText = data.message;
+        } catch (err) {
+          document.getElementById("authMessage").innerText = "Server error ❌";
+          console.error(err);
+        }
       }
-    });
 
-async function sendOTP() {
-  const username = document.getElementById("username").value.trim();
+      async function verifyOTP() {
+        const username = document.getElementById("username").value.trim();
+        const otp = document.getElementById("otp").value.trim();
 
-  if (!username.includes("@")) {
-    document.getElementById("authMessage").innerText = "Enter a valid email ❌";
-    return;
-  }
+        if (!otp) {
+          document.getElementById("authMessage").innerText = "Enter OTP ❌";
+          return;
+        }
 
-  try {
-    const res = await fetch("http://localhost:3000/send-otp", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ username })
-    });
+        try {
+          const res = await fetch("http://localhost:3000/verify-otp", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ username, otp }),
+          });
 
-    const data = await res.json();
+          const data = await res.json();
 
-    document.getElementById("authMessage").innerText = data.message;
+          document.getElementById("authMessage").innerText = data.message;
 
-  } catch (err) {
-    document.getElementById("authMessage").innerText = "Server error ❌";
-    console.error(err);
-  }
-}
+          if (data.success) {
+            localStorage.setItem("loggedUser", username);
+            showUser(username);
 
-async function verifyOTP() {
-  const username = document.getElementById("username").value.trim();
-  const otp = document.getElementById("otp").value.trim();
+            setTimeout(() => {
+              closeModal("authModal");
+            }, 1000);
+          }
+        } catch (err) {
+          document.getElementById("authMessage").innerText =
+            "Verification failed ❌";
+          console.error(err);
+        }
+      }
 
-  if (!otp) {
-    document.getElementById("authMessage").innerText = "Enter OTP ❌";
-    return;
-  }
+      function goHome() {
+        const hero = document.querySelector(".hero-search");
 
-  try {
-    const res = await fetch("http://localhost:3000/verify-otp", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ username, otp })
-    });
+        // ✅ Show main UI WITHOUT reload
+        hero.style.display = "flex";
+        document.getElementById("storesSection").style.display = "flex";
+        document.getElementById("aiBox").style.display = "block";
 
-    const data = await res.json();
+        // ✅ Hide other sections
+        document.querySelectorAll(".user-section").forEach((sec) => {
+          sec.style.display = "none";
+        });
 
-    document.getElementById("authMessage").innerText = data.message;
+        // ✅ Restore last search instantly (NO API CALL 🔥)
+        const lastSearch = localStorage.getItem("lastSearch");
+        const amazon = JSON.parse(localStorage.getItem("amazonData")) || [];
+        const flipkart = JSON.parse(localStorage.getItem("flipkartData")) || [];
 
-    if (data.success) {
-      localStorage.setItem("loggedUser", username);
-      showUser(username);
+        if (lastSearch && (amazon.length || flipkart.length)) {
+          document.getElementById("item").value = lastSearch;
 
-      setTimeout(() => {
-        closeModal('authModal');
-      }, 1000);
-    }
+          amazonData = amazon;
+          flipkartData = flipkart;
 
-  } catch (err) {
-    document.getElementById("authMessage").innerText = "Verification failed ❌";
-    console.error(err);
-  }
-}
+          render("amazon", amazonData);
+          render("flipkart", flipkartData);
+        }
+      }
 
-document.addEventListener("DOMContentLoaded", () => {
-  document.getElementById("username").addEventListener("input", () => {
-    updateAuthUI();
-  });
-});
-  </script>
-</body>
+      document.addEventListener("DOMContentLoaded", () => {
+        document.getElementById("username").addEventListener("input", () => {
+          updateAuthUI();
+        });
+      });
+    </script>
+  </body>
 </html>
