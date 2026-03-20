@@ -1,10 +1,10 @@
 require("dotenv").config();
 
+const otpStore = {}; // { username: { otp, expiry } }
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-const axios = require("axios");
 const { exec } = require("child_process");
 
 const app = express();
@@ -30,25 +30,135 @@ if (!fs.existsSync(USERS_FILE)) {
 const readUsers = () => JSON.parse(fs.readFileSync(USERS_FILE, "utf8"));
 const saveUsers = (data) => fs.writeFileSync(USERS_FILE, JSON.stringify(data, null, 2));
 
-/* ================= AUTH ================= */
-app.post("/signup", (req, res) => {
-  const { username, password } = req.body;
-  const users = readUsers();
+const SibApiV3Sdk = require("sib-api-v3-sdk");
 
-  if (users.find(u => u.username === username)) {
-    return res.json({ message: "Username already exists" });
-  }
+const client = SibApiV3Sdk.ApiClient.instance;
+const apiKeyBrevo = client.authentications["api-key"];
+apiKeyBrevo.apiKey = process.env.BREVO_API_KEY;
 
-  users.push({
-    username,
-    password,
-    cart: [],
-    orders: [],
-    history: []
-  });
+const emailApi = new SibApiV3Sdk.TransactionalEmailsApi();
 
-  saveUsers(users);
-  res.json({ message: "Signup successful" });
+async function sendEmailOTP(email, otp) {
+    const sender = {
+        email: "aakasltf06@gmail.com",
+        name: "Cognitive Cart"
+    };
+
+    const receivers = [{ email }];
+
+    const response = await emailApi.sendTransacEmail({
+        sender,
+        to: receivers,
+        subject: "Your OTP Code",
+        htmlContent: `
+  <div style="font-family: Arial, sans-serif; background: #f4f6f8; padding: 20px;">
+    
+    <div style="max-width: 400px; margin: auto; background: white; padding: 25px; border-radius: 10px; text-align: center; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+      
+      <h2 style="color: #4CAF50; margin-bottom: 10px;">🛒 CognitiveCart</h2>
+      
+      <p style="color: #555; font-size: 14px;">
+        Use the following OTP to login to your account:
+      </p>
+
+      <div style="
+  font-size: 28px;
+  font-weight: bold;
+  background: #f0f8ff;
+  padding: 15px;
+  border-radius: 8px;
+  letter-spacing: 5px;
+  color: #007BFF;
+  margin: 20px 0;
+">
+  ${otp}
+</div>
+
+      <p style="font-size: 13px; color: #777;">
+        This OTP is valid for <b>5 minutes</b>.
+      </p>
+
+      <hr style="margin: 20px 0; border: none; border-top: 1px solid #eee;" />
+
+      <p style="font-size: 12px; color: #aaa;">
+        If you didn’t request this, you can ignore this email.
+      </p>
+
+    </div>
+
+  </div>
+`
+    });
+
+    console.log("BREVO RESPONSE:", response); // 🔥 ADD THIS
+}
+
+app.post("/send-otp", async (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.json({ message: "Username required" });
+    }
+
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(username);
+
+if (!isEmail) {
+    return res.json({ message: "Enter valid email" });
+}
+
+    const otp = Math.floor(100000 + Math.random() * 900000);
+
+    otpStore[username] = {
+        otp: otp,
+        expiry: Date.now() + 5 * 60 * 1000
+    };
+
+    try {
+      await sendEmailOTP(username, otp);
+      res.json({ message: "OTP sent successfully" });
+
+    } catch (error) {
+    console.error("FULL ERROR:", error.response?.body || error.message);
+    res.json({ message: "Failed to send OTP" });
+}
+});
+
+app.post("/verify-otp", (req, res) => {
+    const { username, otp } = req.body;
+
+    const record = otpStore[username];
+
+    if (!record) {
+        return res.json({ success: false, message: "No OTP found" });
+    }
+
+    if (Date.now() > record.expiry) {
+        return res.json({ success: false, message: "OTP expired" });
+    }
+
+    if (parseInt(otp) !== record.otp) {
+        return res.json({ success: false, message: "Invalid OTP" });
+    }
+
+    // OTP verified → register/login user
+    let users = [];
+
+    if (fs.existsSync("users.json")) {
+        users = JSON.parse(fs.readFileSync("users.json"));
+    }
+
+    let user = users.find(u => u.username === username);
+
+    if (!user) {
+        // Register new user
+        user = { username };
+        users.push(user);
+        fs.writeFileSync("users.json", JSON.stringify(users, null, 2));
+    }
+
+    delete otpStore[username];
+
+    res.json({ success: true, message: "Login successful" });
 });
 
 app.post("/signin", (req, res) => {
@@ -278,7 +388,7 @@ app.post("/chatbot", async (req, res) => {
     res.json({ reply: "AI assistant is temporarily unavailable." });
   }
 });
- 
+
 /* ================= START SERVER ================= */
 app.listen(3000, () => {
   console.log("🔥 Cognitive Cart backend running on port 3000");
