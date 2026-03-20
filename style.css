@@ -263,3 +263,9 @@ input, button {
     padding: 10px;
     font-size: 14px;
 }
+
+.hero-search {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
