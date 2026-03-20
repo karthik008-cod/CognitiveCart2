@@ -12,8 +12,7 @@
   <div class="top-bar">
     <h2>🛒 Cognitive Cart</h2>
     <div class="user-controls" id="userControls">
-      <button id="loginBtn" onclick="openAuthModal(false)" style="background: transparent; border: 1px solid var(--primary);">Login</button>
-      <button id="signupBtn" onclick="openAuthModal(true)">Sign Up</button>
+      <button onclick="openAuthModal(false)">Login / Sign Up</button>
     </div>
   </div>
 
@@ -223,10 +222,21 @@
     }
 
     // Visually update the text so the user knows what they are doing
-    function updateAuthUI() {
-      document.getElementById("authTitle").innerText = isSignUp ? "Create Account" : "Welcome Back";
-      document.getElementById("authToggleLink").innerText = isSignUp ? "Already have an account? Log In" : "Don't have an account? Sign Up";
-    }
+function updateAuthUI() {
+  const title = document.getElementById("authTitle");
+  const toggle = document.getElementById("authToggleLink");
+  const message = document.getElementById("authMessage");
+
+  if (isSignUp) {
+    title.innerText = "Create your account 🚀";
+    toggle.innerText = "Already have an account? Login";
+    message.innerText = "Enter your email to get started";
+  } else {
+    title.innerText = "Welcome back 👋";
+    toggle.innerText = "New here? Create an account";
+    message.innerText = "Enter your email to continue";
+  }
+}
 
     function showUser(username) {
       document.getElementById("userControls").innerHTML = `
@@ -534,7 +544,7 @@ async function verifyOTP() {
 
 document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("username").addEventListener("input", () => {
-    document.getElementById("authMessage").innerText = "";
+    updateAuthUI();
   });
 });
   </script>
