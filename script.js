@@ -5,7 +5,7 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
-const { exec } = require("child_process");
+const { spawn } = require("child_process");
 
 const app = express();
 app.use(cors());
@@ -175,15 +175,37 @@ app.post("/signin", (req, res) => {
 
 /* ================= CART ================= */
 app.post("/add-to-cart", (req, res) => {
-  const { username, product } = req.body;
-  const users = readUsers();
-  const user = users.find(u => u.username === username);
+  try {
+    const { username, product } = req.body;
 
-  if (!user) return res.json({ message: "User not found" });
+    console.log("BODY:", req.body);
 
-  user.cart.push(product);
-  saveUsers(users);
-  res.json({ message: "Added to cart" });
+    if (!username || !product) {
+      return res.status(400).json({ message: "Invalid data" });
+    }
+
+    const users = readUsers();
+    let user = users.find(u => u.username === username);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // 🔥 SAFETY INITIALIZATION (VERY IMPORTANT)
+    if (!user.cart) user.cart = [];
+    if (!user.orders) user.orders = [];
+    if (!user.history) user.history = [];
+
+    user.cart.push(product);
+
+    saveUsers(users);
+
+    res.json({ message: "Added to cart" });
+
+  } catch (err) {
+    console.error("ADD TO CART ERROR:", err);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 app.get("/cart/:username", (req, res) => {
@@ -247,34 +269,43 @@ app.get("/history/:username", (req, res) => {
 app.get("/search", (req, res) => {
   const query = req.query.q;
 
-  // 1. Increased timeout to 45 seconds (45000 ms) because Selenium Chrome can be slow
-  exec(`python product_scraper.py "${query}"`, { timeout: 45000 }, (error, stdout, stderr) => {
-    
-    // 2. Only fail if there is an error AND Python didn't send us any data back
-    if (error && !stdout.trim()) {
-      console.error("Python timeout or crash:", error.message);
-      return res.status(500).json({ error: "Scraper took too long to respond." });
+  const python = spawn("python", ["product_scraper.py", query]);
+
+  let data = "";
+  let errorData = "";
+
+  python.stdout.on("data", (chunk) => {
+    data += chunk.toString();
+  });
+
+  python.stderr.on("data", (err) => {
+    errorData += err.toString();
+  });
+
+  python.on("close", (code) => {
+    if (errorData) {
+      console.error("Python Error:", errorData);
     }
 
     try {
-      // 3. Selenium sometimes prints weird warnings (like "DevTools listening..."). 
-      // This trick finds exactly where your JSON data starts so it doesn't break.
-      const jsonStartIndex = stdout.indexOf('{');
-      const cleanData = stdout.substring(jsonStartIndex);
-      
-      const data = JSON.parse(cleanData);
-      
+      const jsonStartIndex = data.indexOf("{");
+      const cleanData = data.substring(jsonStartIndex);
+      const parsed = JSON.parse(cleanData);
+
       res.json({
         product: query,
         lastUpdated: new Date().toLocaleString(),
-        amazon: data.amazon || [],
-        flipkart: data.flipkart || []
+        amazon: parsed.amazon || [],
+        flipkart: parsed.flipkart || []
       });
 
-    } catch (parseError) {
-      console.error("JSON Parse Error:", parseError);
-      console.log("Raw Python Output:", stdout);
-      res.status(500).json({ error: "Received invalid data from scraper." });
+    } catch (err) {
+      console.error("Parse Error:", err);
+      res.json({
+        amazon: [],
+        flipkart: [],
+        error: "Scraper failed, showing fallback"
+      });
     }
   });
 });
