@@ -250,3 +250,16 @@ select option { background: var(--bg-dark); color: white; }
   cursor:pointer;
   border-radius:6px;
 }
+
+#auth-box {
+    display: flex;
+    flex-direction: column;
+    width: 250px;
+    margin: auto;
+    gap: 10px;
+}
+
+input, button {
+    padding: 10px;
+    font-size: 14px;
+}
