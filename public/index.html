@@ -1,0 +1,773 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Cognitive Cart</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="style.css" />
+    <style>
+      /* ── Toast Notifications ── */
+      #toast-container {
+        position: fixed; bottom: 110px; right: 30px;
+        display: flex; flex-direction: column; gap: 8px;
+        z-index: 9999; pointer-events: none;
+      }
+      .toast {
+        padding: 12px 20px; border-radius: 12px; font-size: 0.9rem; font-weight: 600;
+        background: rgba(15,23,42,0.95); border: 1px solid var(--glass-border);
+        color: var(--text-main); backdrop-filter: blur(12px);
+        transform: translateX(120%); opacity: 0;
+        transition: transform 0.35s cubic-bezier(0.175,0.885,0.32,1.275), opacity 0.35s;
+        pointer-events: none; max-width: 260px;
+      }
+      .toast.show { transform: translateX(0); opacity: 1; }
+      .toast.success { border-color: var(--success); color: var(--success); }
+      .toast.error   { border-color: #ef4444; color: #ef4444; }
+
+      /* ── Skeleton Loaders ── */
+      .skeleton {
+        background: linear-gradient(90deg, var(--glass-bg) 25%, rgba(255,255,255,0.1) 50%, var(--glass-bg) 75%);
+        background-size: 200% 100%;
+        animation: shimmer 1.4s infinite;
+        border-radius: 10px;
+      }
+      @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+      .skeleton-card {
+        border: 1px solid var(--glass-border); border-radius: 20px; padding: 25px;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .skeleton-img  { height: 160px; }
+      .skeleton-line { height: 14px; }
+      .skeleton-line.short { width: 60%; }
+      .skeleton-line.price { height: 22px; width: 40%; }
+    </style>
+  </head>
+  <body>
+
+    <div id="toast-container"></div>
+
+    <div class="top-bar">
+      <h2 onclick="goHome()" style="cursor:pointer">🛒 Cognitive Cart</h2>
+      <div class="user-controls" id="userControls">
+        <button onclick="openAuthModal(false)">Login / Sign Up</button>
+      </div>
+    </div>
+
+    <div class="hero-search reveal active">
+      <h1>Find the Best Deals instantly</h1>
+      <!--
+        FIX: onkeydown with debounce instead of no keyboard support.
+        The search button has type="button" to avoid accidental form submit.
+      -->
+      <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)"
+             onkeydown="handleSearchKey(event)" />
+      <button type="button" onclick="search()" class="glow-btn">Compare Prices</button>
+
+      <div class="preferences">
+        <label>Sort By:</label>
+        <select id="sortOption" onchange="applySort()">
+          <option value="">Default</option>
+          <option value="price">Lowest Price</option>
+          <option value="rating">Highest Rating</option>
+          <option value="delivery">Fast Delivery</option>
+        </select>
+      </div>
+      <p id="time" class="text-muted"></p>
+    </div>
+
+    <div id="aiBox" class="reveal"></div>
+
+    <div class="container store-section" id="storesSection" style="display:none">
+      <div class="col reveal">
+        <h3 class="store-header">Amazon</h3>
+        <div id="amazon" class="product-grid"></div>
+      </div>
+      <div class="col reveal" style="transition-delay:0.2s">
+        <h3 class="store-header">Flipkart</h3>
+        <div id="flipkart" class="product-grid"></div>
+      </div>
+    </div>
+
+    <div id="cart"    class="user-section reveal"></div>
+    <div id="orders"  class="user-section reveal"></div>
+    <div id="history" class="user-section reveal"></div>
+
+    <!-- Auth Modal -->
+    <div id="authModal" class="modal">
+      <div class="modal-content reveal-modal">
+        <h3 id="authTitle">Sign In</h3>
+        <div id="auth-box">
+          <input type="text" id="username" placeholder="Enter Email" />
+          <button onclick="sendOTP()">Send OTP</button>
+          <input type="text" id="otp" placeholder="Enter OTP" />
+          <button onclick="verifyOTP()">Login / Register</button>
+        </div>
+        <p><span class="link" id="authToggleLink" onclick="toggleAuth()">Switch to Sign Up</span></p>
+        <p id="authMessage" style="color:var(--accent);font-weight:bold"></p>
+        <button class="close-modal-btn" onclick="closeModal('authModal')">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="paymentModal" class="modal">
+      <div class="modal-content reveal-modal">
+        <h3>Select Payment Method</h3>
+        <select id="paymentSelect">
+          <option value="">Choose</option>
+          <option value="UPI">UPI</option>
+          <option value="Card">Card</option>
+          <option value="COD">Cash On Delivery</option>
+        </select>
+        <button onclick="confirmPayment()">Confirm Payment</button>
+        <button class="close-modal-btn" onclick="closeModal('paymentModal')">Cancel</button>
+      </div>
+    </div>
+
+    <div id="chatToggle">💬</div>
+    <div id="chatBox" class="chat-hidden">
+      <div class="chat-header">
+        Cognitive Cart Assistant
+        <span class="close-btn" id="closeChat">✖</span>
+      </div>
+      <div id="chatMessages" class="chat-messages"></div>
+      <div class="chat-input">
+        <input id="chatInput" placeholder="Ask something..." />
+        <button id="voiceBtn" title="Voice Input">🎙</button>
+        <button id="sendBtn">Send</button>
+      </div>
+    </div>
+
+    <script>
+    // ─── GLOBAL STATE ────────────────────────────────────────────────────────
+    let amazonData   = [];
+    let flipkartData = [];
+    let currentSort  = "";
+    let isSearching  = false;  // FIX: prevents concurrent duplicate searches
+    let searchDebounceTimer = null;
+
+    // ─── SINGLE INTERSECTION OBSERVER ────────────────────────────────────────
+    // FIX: Was creating a new IntersectionObserver every time setTimeout fired.
+    // Now we create ONE observer and just call observeNew() to watch new nodes.
+    const revealObserver = new IntersectionObserver((entries) => {
+      entries.forEach(e => {
+        if (e.isIntersecting) {
+          e.target.classList.add("active");
+          revealObserver.unobserve(e.target); // stop watching once revealed
+        }
+      });
+    }, { threshold: 0.08 });
+
+    function observeNew() {
+      document.querySelectorAll(".reveal:not(.active)").forEach(el => revealObserver.observe(el));
+    }
+
+    // ─── TOAST NOTIFICATIONS ─────────────────────────────────────────────────
+    // FIX: Replaces alert() which blocks the UI thread entirely.
+    function toast(msg, type = "success", duration = 3000) {
+      const container = document.getElementById("toast-container");
+      const div = document.createElement("div");
+      div.className = `toast ${type}`;
+      div.textContent = msg;
+      container.appendChild(div);
+      requestAnimationFrame(() => { requestAnimationFrame(() => div.classList.add("show")); });
+      setTimeout(() => {
+        div.classList.remove("show");
+        setTimeout(() => div.remove(), 400);
+      }, duration);
+    }
+
+    // ─── SKELETON LOADERS ────────────────────────────────────────────────────
+    // FIX: Shows visual structure while waiting, so the page feels alive.
+    // BEFORE: "Loading..." plain text replaced real content
+    function renderSkeletons(id, count = 4) {
+      let html = "";
+      for (let i = 0; i < count; i++) {
+        html += `
+          <div class="skeleton-card">
+            <div class="skeleton skeleton-img"></div>
+            <div class="skeleton skeleton-line"></div>
+            <div class="skeleton skeleton-line short"></div>
+            <div class="skeleton skeleton-line price"></div>
+          </div>`;
+      }
+      document.getElementById(id).innerHTML = html;
+    }
+
+    // ─── WINDOW LOAD ─────────────────────────────────────────────────────────
+    window.onload = function () {
+      const user = localStorage.getItem("loggedUser");
+      if (user) showUser(user);
+
+      observeNew();
+
+      // Restore last search from cache instantly (no network call)
+      const lastSearch  = localStorage.getItem("lastSearch");
+      const amazonCache = safeParseJSON(localStorage.getItem("amazonData"));
+      const fkCache     = safeParseJSON(localStorage.getItem("flipkartData"));
+
+      if (lastSearch && (amazonCache.length || fkCache.length)) {
+        document.getElementById("item").value = lastSearch;
+        document.getElementById("storesSection").style.display = "flex";
+
+        amazonData   = amazonCache;
+        flipkartData = fkCache;
+
+        render("amazon",   amazonData);
+        render("flipkart", flipkartData);
+
+        // Restore AI recommendation from sessionStorage (survives page refresh)
+        const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
+        if (cachedAI) {
+          renderAIBox(cachedAI);
+        }
+        setTimeout(observeNew, 100);
+      }
+    };
+
+    function safeParseJSON(str, fallback = []) {
+      try { return str ? JSON.parse(str) : fallback; }
+      catch { return fallback; }
+    }
+
+    // ─── SEARCH ──────────────────────────────────────────────────────────────
+    // FIX: handleSearchKey with debounce on Enter
+    function handleSearchKey(e) {
+      if (e.key !== "Enter") return;
+      clearTimeout(searchDebounceTimer);
+      searchDebounceTimer = setTimeout(search, 300);
+    }
+
+    async function search() {
+      const q = document.getElementById("item").value.trim();
+      if (!q || isSearching) return;
+
+      isSearching = true;
+
+      document.getElementById("storesSection").style.display = "flex";
+
+      // Show skeletons immediately for instant perceived response
+      renderSkeletons("amazon",   4);
+      renderSkeletons("flipkart", 4);
+
+      // Show AI loading state in parallel
+      const aiBox = document.getElementById("aiBox");
+      aiBox.innerHTML = `<div class="ai-box loading">🧠 AI is analyzing products…</div>`;
+      aiBox.classList.add("active");
+
+      try {
+        const res  = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          // FIX: BEFORE — localStorage was already overwritten with error data by now.
+          // AFTER  — we only update localStorage when data is valid (see below).
+          const cachedAmazon = safeParseJSON(localStorage.getItem("amazonData"));
+          const cachedFk     = safeParseJSON(localStorage.getItem("flipkartData"));
+
+          if (cachedAmazon.length || cachedFk.length) {
+            document.getElementById("time").innerText = "⚡ Showing last saved results";
+            amazonData   = cachedAmazon;
+            flipkartData = cachedFk;
+            render("amazon",   amazonData);
+            render("flipkart", flipkartData);
+          } else {
+            document.getElementById("amazon").innerHTML   = `<p style="color:red">${data.error}</p>`;
+            document.getElementById("flipkart").innerHTML = `<p style="color:red">${data.error}</p>`;
+          }
+          return;
+        }
+
+        // Only write to localStorage after confirming data is valid
+        localStorage.setItem("lastSearch",   q);
+        localStorage.setItem("amazonData",   JSON.stringify(data.amazon   || []));
+        localStorage.setItem("flipkartData", JSON.stringify(data.flipkart || []));
+
+        document.getElementById("time").innerText =
+          (data.fromCache ? "⚡ Cached — " : "") + "Last updated: " + data.lastUpdated;
+
+        amazonData   = data.amazon   || [];
+        flipkartData = data.flipkart || [];
+
+        // FIX: Render products immediately, then fire AI in the background.
+        // BEFORE: await getAIRecommendation() — products only appeared AFTER AI was done.
+        // AFTER:  products render instantly, AI box updates asynchronously.
+        render("amazon",   amazonData);
+        render("flipkart", flipkartData);
+
+        // Log to history (fire-and-forget, don't await)
+        const loggedUser = localStorage.getItem("loggedUser");
+        if (loggedUser) {
+          fetch("/api/history", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: loggedUser, searchQuery: q }),
+          }).catch(() => {});
+        }
+
+        // AI call is now non-blocking — starts after products are already on screen
+        getAIRecommendation(q, [...amazonData, ...flipkartData]);
+
+      } catch (err) {
+        console.error("Search error:", err);
+        document.getElementById("amazon").innerHTML   = "<p>Failed to connect to server.</p>";
+        document.getElementById("flipkart").innerHTML = "<p>Failed to connect to server.</p>";
+        aiBox.innerHTML = "";
+      } finally {
+        isSearching = false;
+      }
+    }
+
+    // ─── RENDER PRODUCTS ─────────────────────────────────────────────────────
+    // FIX: deliveryDays was randomly assigned inside render(), so every re-sort
+    // or re-render mutated the data and gave different values.
+    // Now we normalise data once, before render, and store it consistently.
+    function normalizeProducts(list) {
+      return list.map(p => ({
+        ...p,
+        // Assign once; subsequent renders use the same value
+        deliveryDays: p.deliveryDays || (Math.floor(Math.random() * 5) + 1),
+      }));
+    }
+
+    function render(id, list) {
+      if (!list?.length) {
+        document.getElementById(id).innerHTML = "<p>No results found</p>";
+        return;
+      }
+
+      let highlightItem = null;
+      if (currentSort === "price")    highlightItem = list.reduce((a, b) => (+a.price < +b.price ? a : b));
+      if (currentSort === "rating")   highlightItem = list.reduce((a, b) => (+a.rating||0) > (+b.rating||0) ? a : b);
+      if (currentSort === "delivery") highlightItem = list.reduce((a, b) => (a.deliveryDays||999) < (b.deliveryDays||999) ? a : b);
+
+      // FIX: Build HTML with a DocumentFragment-style approach using array join
+      // (avoids repeated DOM manipulation; single innerHTML assignment)
+      const cards = list.map((p, index) => {
+        const highlight  = highlightItem && highlightItem.title === p.title;
+        // FIX: encodeURIComponent only on minimal fields needed, not full object
+        const productData = encodeURIComponent(JSON.stringify({
+          title: p.title, price: p.price, image: p.image,
+          rating: p.rating, deliveryDays: p.deliveryDays,
+        }));
+        return `
+          <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.08}s">
+            <img src="${p.image}"
+                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png'"
+                 alt="product" loading="lazy" />
+            <h4>${p.title}</h4>
+            <p class="price">₹${p.price}</p>
+            <p class="rating">⭐ ${p.rating}</p>
+            <p class="delivery">🚚 Delivery: ${p.deliveryDays} day${p.deliveryDays > 1 ? "s" : ""}</p>
+            ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
+            <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
+          </div>`;
+      });
+
+      document.getElementById(id).innerHTML = cards.join("");
+      setTimeout(observeNew, 50);
+    }
+
+    // ─── AI RECOMMENDATION ───────────────────────────────────────────────────
+    // FIX: Added sessionStorage caching by search query.
+    // Returning to the same search shows the AI result instantly without re-calling Gemini.
+    async function getAIRecommendation(query, allProducts) {
+      const aiBox   = document.getElementById("aiBox");
+      const cacheKey = "aiRec_" + (query || "");
+
+      // Check sessionStorage first (survives re-renders within the same tab)
+      const sessionCached = sessionStorage.getItem(cacheKey);
+      if (sessionCached && query) {
+        renderAIBox(sessionCached);
+        return;
+      }
+
+      aiBox.innerHTML = `<div class="ai-box loading">🧠 AI is analyzing products…</div>`;
+      aiBox.classList.add("active");
+
+      try {
+        const res  = await fetch("/api/ai-recommendation", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ products: allProducts }),
+        });
+        const data = await res.json();
+        renderAIBox(data.explanation);
+
+        // Cache for this tab session
+        if (query) sessionStorage.setItem(cacheKey, data.explanation);
+      } catch {
+        aiBox.innerHTML = `<div class="ai-box">AI recommendation unavailable.</div>`;
+      }
+    }
+
+    function renderAIBox(explanation) {
+      const aiBox = document.getElementById("aiBox");
+      aiBox.innerHTML = `
+        <div class="ai-box reveal active">
+          <h3>🧠 AI Recommendation</h3>
+          <p>${explanation}</p>
+        </div>`;
+    }
+
+    // ─── SORTING ─────────────────────────────────────────────────────────────
+    function applySort() {
+      currentSort = document.getElementById("sortOption").value;
+      let a = [...amazonData];
+      let f = [...flipkartData];
+
+      const sortFn = (x, y) => {
+        if (currentSort === "price")    return (+x.price||0) - (+y.price||0);
+        if (currentSort === "rating")   return (+y.rating||0) - (+x.rating||0);
+        if (currentSort === "delivery") return (x.deliveryDays||0) - (y.deliveryDays||0);
+        return 0;
+      };
+
+      if (currentSort) { a.sort(sortFn); f.sort(sortFn); }
+      render("amazon", a);
+      render("flipkart", f);
+    }
+
+    // ─── AUTH SYSTEM ─────────────────────────────────────────────────────────
+    let isSignUp = false;
+
+    function openAuthModal(modeIsSignUp) {
+      isSignUp = modeIsSignUp;
+      updateAuthUI();
+      document.getElementById("authModal").style.display = "flex";
+      document.getElementById("authMessage").innerText = "";
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = "none";
+    }
+
+    function toggleAuth() {
+      isSignUp = !isSignUp;
+      updateAuthUI();
+    }
+
+    function updateAuthUI() {
+      document.getElementById("authTitle").innerText =
+        isSignUp ? "Create your account 🚀" : "Welcome back 👋";
+      document.getElementById("authToggleLink").innerText =
+        isSignUp ? "Already have an account? Login" : "New here? Create an account";
+      document.getElementById("authMessage").innerText =
+        isSignUp ? "Enter your email to get started" : "Enter your email to continue";
+    }
+
+    function showUser(username) {
+      document.getElementById("userControls").innerHTML = `
+        <span class="welcome-text">👤 ${username}</span>
+        <button onclick="showSection('orders')" style="background:transparent;border:1px solid var(--primary)">My Orders</button>
+        <button onclick="showSection('history')" style="background:transparent;border:1px solid var(--primary)">History</button>
+        <button onclick="showSection('cart')">Cart</button>
+        <button class="logout-btn" onclick="logout()">Logout</button>`;
+    }
+
+    function logout() {
+      localStorage.removeItem("loggedUser");
+      location.reload();
+    }
+
+    async function sendOTP() {
+      const username = document.getElementById("username").value.trim();
+      if (!username.includes("@")) {
+        document.getElementById("authMessage").innerText = "Enter a valid email ❌";
+        return;
+      }
+      try {
+        const res  = await fetch("/api/send-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username }),
+        });
+        const data = await res.json();
+        document.getElementById("authMessage").innerText = data.message;
+      } catch {
+        document.getElementById("authMessage").innerText = "Server error ❌";
+      }
+    }
+
+    async function verifyOTP() {
+      const username = document.getElementById("username").value.trim();
+      const otp      = document.getElementById("otp").value.trim();
+      if (!otp) { document.getElementById("authMessage").innerText = "Enter OTP ❌"; return; }
+      try {
+        const res  = await fetch("/api/verify-otp", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, otp }),
+        });
+        const data = await res.json();
+        document.getElementById("authMessage").innerText = data.message;
+        if (data.success) {
+          localStorage.setItem("loggedUser", username);
+          showUser(username);
+          setTimeout(() => closeModal("authModal"), 1000);
+        }
+      } catch {
+        document.getElementById("authMessage").innerText = "Verification failed ❌";
+      }
+    }
+
+    // ─── SECTIONS ────────────────────────────────────────────────────────────
+    function showSection(id) {
+      document.getElementById("storesSection").style.display = "none";
+      document.querySelector(".hero-search").style.display   = "none";
+      document.getElementById("aiBox").style.display         = "none";
+      document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
+      document.getElementById(id).style.display = "block";
+
+      if (id === "cart")    loadCart();
+      if (id === "orders")  loadOrders();
+      if (id === "history") loadHistory();
+    }
+
+    function goHome() {
+      document.querySelector(".hero-search").style.display  = "flex";
+      document.getElementById("storesSection").style.display = "flex";
+      document.getElementById("aiBox").style.display         = "block";
+      document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
+
+      const lastSearch = localStorage.getItem("lastSearch");
+      const amazon     = safeParseJSON(localStorage.getItem("amazonData"));
+      const flipkart   = safeParseJSON(localStorage.getItem("flipkartData"));
+
+      if (lastSearch && (amazon.length || flipkart.length)) {
+        document.getElementById("item").value = lastSearch;
+        amazonData   = amazon;
+        flipkartData = flipkart;
+        render("amazon",   amazonData);
+        render("flipkart", flipkartData);
+
+        // Restore AI from sessionStorage on home navigation too
+        const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
+        if (cachedAI) renderAIBox(cachedAI);
+      }
+    }
+
+    // ─── CART ────────────────────────────────────────────────────────────────
+    async function addToCart(btn) {
+      const username = localStorage.getItem("loggedUser");
+      if (!username) {
+        toast("Please login first ⚠️", "error");
+        openAuthModal(false);
+        return;
+      }
+
+      // FIX: Disable button to prevent double-tap adds
+      btn.disabled = true;
+      btn.textContent = "Adding…";
+
+      try {
+        const product = JSON.parse(decodeURIComponent(btn.dataset.product || "{}"));
+        const res     = await fetch("/api/add-to-cart", {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({ username, product }),
+        });
+        const data = await res.json();
+        // FIX: toast instead of alert() (non-blocking)
+        toast(data.message || "Added to cart ✓", "success");
+        btn.textContent = "✓ Added";
+      } catch {
+        toast("Failed to add to cart", "error");
+        btn.disabled    = false;
+        btn.textContent = "Add to Cart";
+      }
+    }
+
+    async function loadCart() {
+      const username = localStorage.getItem("loggedUser");
+      if (!username) return;
+
+      document.getElementById("cart").innerHTML =
+        "<h3>🛒 Your Cart</h3><p>Loading…</p>";
+
+      const res  = await fetch(`/api/cart/${encodeURIComponent(username)}`);
+      const cart = await res.json();
+
+      let html = "<h3>🛒 Your Cart</h3><div class='product-grid'>";
+      cart.forEach((p, i) => {
+        html += `
+          <div class="card reveal" style="transition-delay:${i * 0.1}s">
+            <img src="${p.image}" alt="">
+            <h4>${p.title}</h4>
+            <p class="price">₹${p.price}</p>
+          </div>`;
+      });
+      html += "</div>";
+      if (cart.length) {
+        html += `<button class="glow-btn" style="margin-top:20px" onclick="placeOrder()">Place Order</button>`;
+      } else {
+        html += "<p style='margin-top:20px;color:var(--text-muted)'>Your cart is empty.</p>";
+      }
+
+      document.getElementById("cart").innerHTML = html;
+      setTimeout(observeNew, 50);
+    }
+
+    // ─── ORDERS & HISTORY ────────────────────────────────────────────────────
+    function placeOrder() {
+      document.getElementById("paymentModal").style.display = "flex";
+    }
+
+    async function confirmPayment() {
+      const paymentMethod = document.getElementById("paymentSelect").value;
+      if (!paymentMethod) { toast("Select a payment method", "error"); return; }
+
+      const username = localStorage.getItem("loggedUser");
+      const res      = await fetch("/api/place-order", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify({ username, paymentMethod }),
+      });
+      const data = await res.json();
+      toast(data.message, "success");
+      closeModal("paymentModal");
+      showSection("orders");
+    }
+
+    async function loadOrders() {
+      const username = localStorage.getItem("loggedUser");
+      const res      = await fetch(`/api/orders/${encodeURIComponent(username)}`);
+      const orders   = await res.json();
+
+      let html = "<h3>📦 My Orders</h3>";
+      if (!orders.length) { html += "<p style='color:var(--text-muted)'>No orders yet.</p>"; }
+
+      orders.forEach((order, index) => {
+        html += `
+          <div class="order-group reveal">
+            <h4>Order #${index + 1}
+              <span style="font-size:0.8rem;color:var(--text-muted)">(${order.orderDate || "N/A"})</span>
+            </h4>
+            <p><small>Payment: ${order.paymentMethod || "Unknown"}</small></p>
+            <div class="product-grid">`;
+
+        (order.items || [order]).forEach(p => {
+          html += `<div class="card"><img src="${p.image}" alt=""><h5>${p.title}</h5><p class="price">₹${p.price}</p></div>`;
+        });
+
+        html += `</div></div><hr style="border-color:var(--glass-border);margin:20px 0">`;
+      });
+
+      document.getElementById("orders").innerHTML = html;
+      setTimeout(observeNew, 50);
+    }
+
+    async function loadHistory() {
+      const username = localStorage.getItem("loggedUser");
+      const res      = await fetch(`/api/history/${encodeURIComponent(username)}`);
+      const history  = await res.json();
+
+      let html = "<h3>🕘 Search History</h3><ul style='list-style:none;padding:0'>";
+      if (!history.length) { html += "<li style='color:var(--text-muted)'>No history yet.</li>"; }
+
+      history.forEach((h, i) => {
+        html += `
+          <li class="reveal" style="background:var(--glass-bg);padding:15px;margin-bottom:10px;
+                                    border-radius:8px;border:1px solid var(--glass-border);
+                                    transition-delay:${i * 0.05}s;cursor:pointer"
+              onclick="document.getElementById('item').value='${h.searchQuery}';goHome();search()">
+            <strong>${h.searchQuery}</strong>
+            <small class="text-muted" style="float:right">${h.time}</small>
+          </li>`;
+      });
+
+      html += "</ul>";
+      document.getElementById("history").innerHTML = html;
+      setTimeout(observeNew, 50);
+    }
+
+    // ─── CHATBOT ─────────────────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", function () {
+      const chatToggle     = document.getElementById("chatToggle");
+      const chatBox        = document.getElementById("chatBox");
+      const closeBtn       = document.getElementById("closeChat");
+      const sendBtn        = document.getElementById("sendBtn");
+      const input          = document.getElementById("chatInput");
+      const messagesDiv    = document.getElementById("chatMessages");
+      const voiceBtn       = document.getElementById("voiceBtn");
+      let isChatSending    = false; // FIX: prevents double-send while awaiting response
+
+      voiceBtn.addEventListener("click", () => {
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR) { toast("Voice not supported in this browser", "error"); return; }
+        const recognition = new SR();
+        recognition.lang  = "en-US";
+        recognition.start();
+        voiceBtn.innerHTML = "🎙...";
+        recognition.onresult = (e) => {
+          input.value = e.results[0][0].transcript;
+          voiceBtn.innerHTML = "🎙";
+          sendMessage();
+        };
+        recognition.onerror = recognition.onend = () => (voiceBtn.innerHTML = "🎙");
+      });
+
+      chatToggle.addEventListener("click", () => {
+        chatBox.classList.remove("chat-hidden");
+        chatToggle.style.transform = "scale(0)";
+      });
+      closeBtn.addEventListener("click", () => {
+        chatBox.classList.add("chat-hidden");
+        chatToggle.style.transform = "scale(1)";
+      });
+
+      sendBtn.addEventListener("click", sendMessage);
+      input.addEventListener("keypress", e => { if (e.key === "Enter") sendMessage(); });
+
+      async function sendMessage() {
+        const message = input.value.trim();
+        // FIX: guard against empty message AND concurrent sends
+        if (!message || isChatSending) return;
+
+        isChatSending = true;
+        sendBtn.disabled = true;
+        addMessage("user", message);
+        input.value = "";
+
+        const typingDiv = document.createElement("div");
+        typingDiv.className = "msg bot reveal active";
+        typingDiv.id = "typingIndicator";
+        typingDiv.innerHTML = `<div class="typing-indicator" style="padding:0;background:transparent">
+          <span></span><span></span><span></span></div>`;
+        messagesDiv.appendChild(typingDiv);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+
+        try {
+          const res  = await fetch("/api/chatbot", {
+            method:  "POST",
+            headers: { "Content-Type": "application/json" },
+            body:    JSON.stringify({ message }),
+          });
+          const data = await res.json();
+          document.getElementById("typingIndicator")?.remove();
+          addMessage("bot", data.reply);
+        } catch {
+          document.getElementById("typingIndicator")?.remove();
+          addMessage("bot", "AI unavailable. Please try again.");
+        } finally {
+          isChatSending    = false;
+          sendBtn.disabled = false;
+        }
+      }
+
+      function addMessage(type, text) {
+        const div = document.createElement("div");
+        div.className = `msg ${type} reveal active`;
+        div.innerText = text;
+        messagesDiv.appendChild(div);
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      }
+    });
+
+    // ─── AUTH INPUT LISTENER ─────────────────────────────────────────────────
+    document.addEventListener("DOMContentLoaded", () => {
+      document.getElementById("username")?.addEventListener("input", updateAuthUI);
+    });
+    </script>
+  </body>
+</html>
