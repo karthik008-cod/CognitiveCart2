@@ -29,7 +29,7 @@ async function connectDB() {
 }
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 const emailClient = SibApiV3Sdk.ApiClient.instance;
 emailClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
