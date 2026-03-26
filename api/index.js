@@ -202,9 +202,12 @@ async function scrapeFlipkart(query) {
     if (!apiKey) return getSmartFallback(query, "Flipkart");
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+    
+    // ADDED: &render=true to force ScraperAPI to load Flipkart's JavaScript
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
+    // ADDED: Increased timeout to 20000ms to allow time for the rendering
+    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -225,66 +228,6 @@ async function scrapeFlipkart(query) {
     return getSmartFallback(query, "Flipkart");
   }
 }
-
-async function scrapeFlipkart(query) {
-  try {
-    const { data } = await axios.get(
-      `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`,
-      { headers: SCRAPE_HEADERS, timeout: 4000 } 
-    );
-    const $ = cheerio.load(data);
-    const results = [];
-
-    $("div[data-id]").slice(0, 4).each((_, el) => {
-      const title = $(el).find("img").attr("alt");
-      const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
-      const image = $(el).find("img").attr("src");
-      if (title && price) {
-        results.push({
-          title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
-          price, rating: "4.3", image: image || FALLBACK_IMG,
-        });
-      }
-    });
-    return results.length ? results : getSmartFallback(query, "Flipkart");
-  } catch (e) {
-    console.error("Flipkart blocked the Vercel IP, using smart fallback.");
-    return getSmartFallback(query, "Flipkart");
-  }
-}
-
-async function scrapeFlipkart(query) {
-  try {
-    const { data } = await axios.get(
-      `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`,
-      { headers: SCRAPE_HEADERS, timeout: 5000 }  // FIX: was no timeout
-    );
-    const $ = cheerio.load(data);
-    const results = [];
-
-    $("div[data-id]").slice(0, 5).each((_, el) => {
-      const title = $(el).find("img").attr("alt");
-      const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
-      const image = $(el).find("img").attr("src");
-      if (title && price) {
-        results.push({
-          title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
-          price,
-          rating: "4.3",
-          image: image || FALLBACK_IMG,
-        });
-      }
-    });
-
-    return results.length
-      ? results
-      : [{ title: `Flipkart – ${query}`, price: "1200", rating: "4.2", image: FALLBACK_IMG }];
-  } catch (e) {
-    console.error("Flipkart scrape failed:", e.message);
-    return [{ title: `Flipkart – ${query} (Fallback)`, price: "1500", rating: "4.0", image: FALLBACK_IMG }];
-  }
-}
-
 
 // ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
 
