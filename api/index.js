@@ -202,9 +202,12 @@ async function scrapeFlipkart(query) {
     if (!apiKey) return getSmartFallback(query, "Flipkart");
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
+    
+    // REMOVED &render=true (too slow). ADDED &premium=true (better disguise).
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true`;
 
-    const { data } = await axios.get(proxyUrl, { timeout: 20000 });
+    // LOWERED timeout to 9000ms so it safely finishes BEFORE Vercel's 10-second kill switch
+    const { data } = await axios.get(proxyUrl, { timeout: 9000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -212,11 +215,9 @@ async function scrapeFlipkart(query) {
       const title = $(el).find("img").attr("alt");
       const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
       
-      // --- UPGRADED IMAGE FINDER ---
       let image = FALLBACK_IMG;
       $(el).find("img").each((i, imgEl) => {
         const src = $(imgEl).attr("src");
-        // Only grab the image if it's the real product image hosted on their CDN
         if (src && src.includes("rukminim")) {
           image = src;
         }
@@ -235,7 +236,6 @@ async function scrapeFlipkart(query) {
     return getSmartFallback(query, "Flipkart");
   }
 }
-
 // ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
 
 app.get("/api/search", async (req, res) => {
