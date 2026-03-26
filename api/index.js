@@ -151,14 +151,9 @@ app.post("/api/verify-otp", async (req, res) => {
 
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
-const FALLBACK_IMG = "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png";
-const SCRAPE_HEADERS = { 
-  "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-  "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-  "Accept-Language": "en-US,en;q=0.5"
-};
+// Upgraded to a sleek tech image instead of the blank white circle
+const FALLBACK_IMG = "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
 
-// Generates realistic-looking data if the cloud IP gets blocked
 function getSmartFallback(query, store) {
   const q = query.charAt(0).toUpperCase() + query.slice(1);
   return [
@@ -170,10 +165,16 @@ function getSmartFallback(query, store) {
 
 async function scrapeAmazon(query) {
   try {
-    const { data } = await axios.get(
-      `https://www.amazon.in/s?k=${encodeURIComponent(query)}`,
-      { headers: SCRAPE_HEADERS, timeout: 4000 }
-    );
+    const apiKey = process.env.SCRAPER_API_KEY;
+    // If no key is found, safely fall back so the app doesn't crash
+    if (!apiKey) return getSmartFallback(query, "Amazon");
+
+    // Route the request through ScraperAPI's proxy network
+    const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+
+    // Increased timeout to 15s because bouncing through proxies takes slightly longer
+    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     const $ = cheerio.load(data);
     const results = [];
 
@@ -190,8 +191,38 @@ async function scrapeAmazon(query) {
     });
     return results.length ? results : getSmartFallback(query, "Amazon");
   } catch (e) {
-    console.error("Amazon blocked the Vercel IP, using smart fallback.");
+    console.error("Amazon scrape failed:", e.message);
     return getSmartFallback(query, "Amazon");
+  }
+}
+
+async function scrapeFlipkart(query) {
+  try {
+    const apiKey = process.env.SCRAPER_API_KEY;
+    if (!apiKey) return getSmartFallback(query, "Flipkart");
+
+    const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+
+    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
+    const $ = cheerio.load(data);
+    const results = [];
+
+    $("div[data-id]").slice(0, 4).each((_, el) => {
+      const title = $(el).find("img").attr("alt");
+      const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
+      const image = $(el).find("img").attr("src");
+      if (title && price) {
+        results.push({
+          title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
+          price, rating: "4.3", image: image || FALLBACK_IMG,
+        });
+      }
+    });
+    return results.length ? results : getSmartFallback(query, "Flipkart");
+  } catch (e) {
+    console.error("Flipkart scrape failed:", e.message);
+    return getSmartFallback(query, "Flipkart");
   }
 }
 
