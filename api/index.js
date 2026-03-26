@@ -202,11 +202,8 @@ async function scrapeFlipkart(query) {
     if (!apiKey) return getSmartFallback(query, "Flipkart");
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-    
-    // ADDED: &render=true to force ScraperAPI to load Flipkart's JavaScript
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&render=true`;
 
-    // ADDED: Increased timeout to 20000ms to allow time for the rendering
     const { data } = await axios.get(proxyUrl, { timeout: 20000 });
     const $ = cheerio.load(data);
     const results = [];
@@ -214,11 +211,21 @@ async function scrapeFlipkart(query) {
     $("div[data-id]").slice(0, 4).each((_, el) => {
       const title = $(el).find("img").attr("alt");
       const price = $(el).text().match(/₹([0-9,]+)/)?.[1]?.replace(/,/g, "");
-      const image = $(el).find("img").attr("src");
+      
+      // --- UPGRADED IMAGE FINDER ---
+      let image = FALLBACK_IMG;
+      $(el).find("img").each((i, imgEl) => {
+        const src = $(imgEl).attr("src");
+        // Only grab the image if it's the real product image hosted on their CDN
+        if (src && src.includes("rukminim")) {
+          image = src;
+        }
+      });
+
       if (title && price) {
         results.push({
           title: title.substring(0, 60) + (title.length > 60 ? "..." : ""),
-          price, rating: "4.3", image: image || FALLBACK_IMG,
+          price, rating: "4.3", image: image,
         });
       }
     });
