@@ -424,15 +424,35 @@ app.post("/api/ai-recommendation", async (req, res) => {
 });
 
 app.post("/api/chatbot", async (req, res) => {
-  const { message } = req.body;
+  const { message, username } = req.body; // NOW ACCEPTING USERNAME
   if (!message?.trim()) return res.json({ reply: "Say something!" });
 
   try {
+    let userContext = "";
+    
+    // If user is logged in, fetch their cart and orders from MongoDB
+    if (username) {
+      const db = await connectDB();
+      const user = await db.collection("users").findOne(
+        { username }, 
+        { projection: { cart: 1, orders: 1 } }
+      );
+      
+      if (user) {
+        // Format the data so the AI can easily read it
+        const cartStr = (user.cart || []).map(p => p.title).join(", ") || "Empty";
+        const ordersStr = (user.orders || []).map(o => `Items: ${o.items.map(i=>i.title).join(", ")} | Date: ${o.orderDate}`).join(" ; ") || "No orders yet";
+        
+        userContext = `\nUser's Current Cart: ${cartStr}\nUser's Past Orders: ${ordersStr}\nIf the user asks about their cart or orders, answer using this exact data. If they ask for a specific number of orders (like "show 2"), only show that amount. If they ask for a specific item, check if it's in this list.`;
+      }
+    }
+
     const prompt =
       `You are the AI assistant for 'Cognitive Cart', a price comparison app. ` +
       `Help users find deals, compare Amazon vs Flipkart, and answer cart/order questions. ` +
       `Be friendly and concise — max 2-3 sentences. No markdown or bold text. ` +
-      `User: "${message.trim()}"`;
+      userContext +
+      `\nUser: "${message.trim()}"`;
 
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
       model: "llama-3.1-8b-instant",

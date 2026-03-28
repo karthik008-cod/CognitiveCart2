@@ -41,6 +41,13 @@
       .skeleton-line { height: 14px; }
       .skeleton-line.short { width: 60%; }
       .skeleton-line.price { height: 22px; width: 40%; }
+      .chat-header {
+        cursor: grab;
+        user-select: none; /* Prevents text from highlighting while dragging */
+      }
+      .chat-header:active {
+        cursor: grabbing;
+      }
     </style>
   </head>
   <body>
@@ -99,7 +106,7 @@
         <h3 id="authTitle">Sign In</h3>
         <div id="auth-box">
           <input type="text" id="username" placeholder="Enter Email" />
-          <button onclick="sendOTP()">Send OTP</button>
+          <button id="sendOtpBtn" onclick="sendOTP()">Send OTP</button>
           <input type="text" id="otp" placeholder="Enter OTP" />
           <button onclick="verifyOTP()">Login / Register</button>
         </div>
@@ -472,10 +479,17 @@
 
     async function sendOTP() {
       const username = document.getElementById("username").value.trim();
+      const btn = document.getElementById("sendOtpBtn"); // Find the button
+      
       if (!username.includes("@")) {
         document.getElementById("authMessage").innerText = "Enter a valid email ❌";
         return;
       }
+
+      // Change button text and disable it
+      btn.innerText = "Sending...";
+      btn.disabled = true;
+
       try {
         const res  = await fetch("/api/send-otp", {
           method: "POST",
@@ -486,6 +500,10 @@
         document.getElementById("authMessage").innerText = data.message;
       } catch {
         document.getElementById("authMessage").innerText = "Server error ❌";
+      } finally {
+        // Reset the button after it finishes
+        btn.innerText = "Send OTP";
+        btn.disabled = false;
       }
     }
 
@@ -682,6 +700,36 @@
     }
 
     // ─── CHATBOT ─────────────────────────────────────────────────────────────
+
+    // --- DRAGGABLE CHAT LOGIC ---
+      let isDragging = false, dragStartX, dragStartY, initialLeft, initialTop;
+      const chatHeader = document.querySelector(".chat-header");
+
+      chatHeader.addEventListener("mousedown", (e) => {
+        if(e.target === closeBtn) return; // Don't drag if they click the X
+        isDragging = true;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        
+        const rect = chatBox.getBoundingClientRect();
+        chatBox.style.bottom = "auto";
+        chatBox.style.right = "auto";
+        chatBox.style.left = rect.left + "px";
+        chatBox.style.top = rect.top + "px";
+
+        initialLeft = rect.left;
+        initialTop = rect.top;
+      });
+
+      document.addEventListener("mousemove", (e) => {
+        if (!isDragging) return;
+        e.preventDefault();
+        chatBox.style.left = (initialLeft + (e.clientX - dragStartX)) + "px";
+        chatBox.style.top = (initialTop + (e.clientY - dragStartY)) + "px";
+      });
+
+      document.addEventListener("mouseup", () => { isDragging = false; });
+
     document.addEventListener("DOMContentLoaded", function () {
       const chatToggle     = document.getElementById("chatToggle");
       const chatBox        = document.getElementById("chatBox");
@@ -738,10 +786,12 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         try {
+          // Grab the username from storage to send to the AI
+          const username = localStorage.getItem("loggedUser");
           const res  = await fetch("/api/chatbot", {
             method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body:    JSON.stringify({ message }),
+            body:    JSON.stringify({ message, username }), // username added here
           });
           const data = await res.json();
           document.getElementById("typingIndicator")?.remove();
