@@ -393,44 +393,39 @@ app.post("/api/history", async (req, res) => {
 });
 
 
-// ─── 7. AI ENDPOINTS ─────────────────────────────────────────────────────────
-//
-// BEFORE: Every search triggers a full Gemini call with a verbose prompt.
-// AFTER:  Cache keyed by product hash → repeat searches return instantly.
-//         Prompt trimmed to reduce token count (fewer tokens = faster TTFT).
+// ─── 7. AI ENDPOINTS (POWERED BY GROQ & LLAMA 3) ─────────────────────────────
 
 app.post("/api/ai-recommendation", async (req, res) => {
   const { products } = req.body;
   if (!products?.length) return res.json({ explanation: "No products to analyze." });
 
-  // Check cache first
   const cacheKey = hashProducts(products);
   const cached = getCached(aiCache, cacheKey);
   if (cached) return res.json({ explanation: cached, fromCache: true });
 
   try {
-    // FIX: Shorter prompt → fewer input tokens → faster response
-    // BEFORE: 5-line paragraph with lots of formatting instructions
-    // AFTER:  Tightly worded, same intent
     const prompt =
       `You are a deal-finding AI for 'Cognitive Cart'. ` +
       `From these products: ${JSON.stringify(products)}, ` +
       `pick the best value (balance of lowest price, highest rating, fastest delivery). ` +
       `Reply in exactly 2 short plain-text sentences. No markdown, no asterisks.`;
 
-    const result = await geminiModel.generateContent(prompt);
-    const explanation = result.response.text().trim();
+    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+      model: "llama3-8b-8192",
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
+    });
 
+    const explanation = response.data.choices[0].message.content.trim();
     setCache(aiCache, cacheKey, explanation, AI_TTL);
     res.json({ explanation });
   } catch (err) {
-    console.error("Gemini AI error:", err.message);
+    console.error("Groq AI error:", err?.response?.data || err.message);
     res.json({ explanation: "AI recommendation temporarily unavailable." });
   }
 });
 
-// Chatbot: no caching (conversational — every message is unique)
-// FIX: Trimmed prompt to reduce token count and latency
 app.post("/api/chatbot", async (req, res) => {
   const { message } = req.body;
   if (!message?.trim()) return res.json({ reply: "Say something!" });
@@ -442,14 +437,16 @@ app.post("/api/chatbot", async (req, res) => {
       `Be friendly and concise — max 2-3 sentences. No markdown or bold text. ` +
       `User: "${message.trim()}"`;
 
-    const result = await geminiModel.generateContent(prompt);
-    res.json({ reply: result.response.text().trim() });
+    const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
+      model: "llama3-8b-8192",
+      messages: [{ role: "user", content: prompt }]
+    }, {
+      headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
+    });
+
+    res.json({ reply: response.data.choices[0].message.content.trim() });
   } catch (err) {
-    console.error("Chatbot Gemini error:", err.message);
+    console.error("Chatbot Groq error:", err?.response?.data || err.message);
     res.json({ reply: "AI assistant is temporarily unavailable." });
   }
 });
-
-
-// Export for Vercel Serverless
-module.exports = app;
