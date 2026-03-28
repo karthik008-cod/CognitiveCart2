@@ -3,7 +3,6 @@ const cors = require("cors");
 const { MongoClient } = require("mongodb");
 const axios = require("axios");
 const cheerio = require("cheerio");
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 
 const app = express();
@@ -28,8 +27,6 @@ async function connectDB() {
   return db;
 }
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
 
 const emailClient = SibApiV3Sdk.ApiClient.instance;
 emailClient.authentications["api-key"].apiKey = process.env.BREVO_API_KEY;
@@ -411,7 +408,7 @@ app.post("/api/ai-recommendation", async (req, res) => {
       `Reply in exactly 2 short plain-text sentences. No markdown, no asterisks.`;
 
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
@@ -438,7 +435,7 @@ app.post("/api/chatbot", async (req, res) => {
       `User: "${message.trim()}"`;
 
     const response = await axios.post("https://api.groq.com/openai/v1/chat/completions", {
-      model: "llama3-8b-8192",
+      model: "llama-3.1-8b-instant",
       messages: [{ role: "user", content: prompt }]
     }, {
       headers: { "Authorization": `Bearer ${process.env.GROQ_API_KEY}` }
@@ -450,3 +447,5 @@ app.post("/api/chatbot", async (req, res) => {
     res.json({ reply: "AI assistant is temporarily unavailable." });
   }
 });
+
+module.exports = app;
