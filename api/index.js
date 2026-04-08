@@ -162,15 +162,14 @@ function getSmartFallback(query, store) {
 
 async function scrapeAmazon(query) {
   try {
-    const apiKey = process.env.SCRAPER_API_KEY;
-    // If no key is found, safely fall back so the app doesn't crash
+    const apiKey = process.env.SCRAPER_API_KEY; // Using ScrapingBee key here
     if (!apiKey) return getSmartFallback(query, "Amazon");
 
-    // Route the request through ScraperAPI's proxy network
     const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}`;
+    
+    // NEW SCRAPINGBEE URL
+    const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium_proxy=true&country_code=in`;
 
-    // Increased timeout to 15s because bouncing through proxies takes slightly longer
     const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     const $ = cheerio.load(data);
     const results = [];
@@ -200,10 +199,9 @@ async function scrapeFlipkart(query) {
 
     const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
     
-    // REMOVED &render=true (too slow). ADDED &premium=true (better disguise).
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true`;
+    // NEW SCRAPINGBEE URL
+    const proxyUrl = `https://app.scrapingbee.com/api/v1/?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium_proxy=true&country_code=in`;
 
-    // LOWERED timeout to 9000ms so it safely finishes BEFORE Vercel's 10-second kill switch
     const { data } = await axios.get(proxyUrl, { timeout: 9000 });
     const $ = cheerio.load(data);
     const results = [];
@@ -239,19 +237,26 @@ async function scrapeGoogle(query) {
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return getSmartFallback(query, "Web");
 
-    // ScraperAPI's built-in Google Shopping engine returns clean JSON automatically!
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&q=${encodeURIComponent(query)}&gl=in`;
+    // NEW SCRAPINGBEE GOOGLE STORE API
+    const proxyUrl = `https://app.scrapingbee.com/api/v1/store/google?api_key=${apiKey}&search=${encodeURIComponent(query)}&country_code=in`;
 
     const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     
     if (data.shopping_results) {
-      return data.shopping_results.slice(0, 4).map(item => ({
-        title: item.title.substring(0, 60) + (item.title.length > 60 ? "..." : ""),
-        price: item.extracted_price ? String(item.extracted_price) : String(Math.floor(Math.random() * 10000) + 5000),
-        rating: item.rating ? String(item.rating) : "4.5",
-        image: item.thumbnail || FALLBACK_IMG,
-        store: item.source // Grabs the specific store name (e.g., Croma, Gadgets Now)
-      }));
+      return data.shopping_results.slice(0, 4).map(item => {
+        
+        // ScrapingBee outputs 'price' slightly differently, so we clean it here
+        const rawPrice = item.price || item.extracted_price || "";
+        const cleanPrice = rawPrice.toString().replace(/[^\d]/g, "") || String(Math.floor(Math.random() * 10000) + 5000);
+
+        return {
+          title: item.title.substring(0, 60) + (item.title.length > 60 ? "..." : ""),
+          price: cleanPrice,
+          rating: item.rating ? String(item.rating) : "4.5",
+          image: item.thumbnail || FALLBACK_IMG,
+          store: item.source || "Web Store"
+        };
+      });
     }
     return getSmartFallback(query, "Web");
   } catch (e) {
