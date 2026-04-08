@@ -94,6 +94,10 @@
         <h3 class="store-header">Flipkart</h3>
         <div id="flipkart" class="product-grid"></div>
       </div>
+      <div class="col reveal" style="transition-delay:0.4s">
+        <h3 class="store-header">Other Stores</h3>
+        <div id="google" class="product-grid"></div>
+      </div>
     </div>
 
     <div id="cart"    class="user-section reveal"></div>
@@ -149,6 +153,7 @@
     // ─── GLOBAL STATE ────────────────────────────────────────────────────────
     let amazonData   = [];
     let flipkartData = [];
+    let googleData   = [];
     let currentSort  = "";
     let isSearching  = false;  // FIX: prevents concurrent duplicate searches
     let searchDebounceTimer = null;
@@ -256,6 +261,7 @@
       // Show skeletons immediately for instant perceived response
       renderSkeletons("amazon",   4);
       renderSkeletons("flipkart", 4);
+      renderSkeletons("google",   4);
 
       // Show AI loading state in parallel
       const aiBox = document.getElementById("aiBox");
@@ -289,18 +295,21 @@
         localStorage.setItem("lastSearch",   q);
         localStorage.setItem("amazonData",   JSON.stringify(data.amazon   || []));
         localStorage.setItem("flipkartData", JSON.stringify(data.flipkart || []));
+        localStorage.setItem("googleData",   JSON.stringify(data.google   || []));
 
         document.getElementById("time").innerText =
           (data.fromCache ? "⚡ Cached — " : "") + "Last updated: " + data.lastUpdated;
 
         amazonData   = data.amazon   || [];
         flipkartData = data.flipkart || [];
+        googleData   = data.google   || [];
 
         // FIX: Render products immediately, then fire AI in the background.
         // BEFORE: await getAIRecommendation() — products only appeared AFTER AI was done.
         // AFTER:  products render instantly, AI box updates asynchronously.
         render("amazon",   amazonData);
         render("flipkart", flipkartData);
+        render("google",   googleData);
 
         // Log to history (fire-and-forget, don't await)
         const loggedUser = localStorage.getItem("loggedUser");
@@ -313,7 +322,7 @@
         }
 
         // AI call is now non-blocking — starts after products are already on screen
-        getAIRecommendation(q, [...amazonData, ...flipkartData]);
+        getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
 
       } catch (err) {
         console.error("Search error:", err);
@@ -422,6 +431,7 @@
       currentSort = document.getElementById("sortOption").value;
       let a = [...amazonData];
       let f = [...flipkartData];
+      let g = [...googleData];
 
       const sortFn = (x, y) => {
         if (currentSort === "price")    return (+x.price||0) - (+y.price||0);
@@ -430,9 +440,10 @@
         return 0;
       };
 
-      if (currentSort) { a.sort(sortFn); f.sort(sortFn); }
+      if (currentSort) { a.sort(sortFn); f.sort(sortFn); g.sort(sortFn); }
       render("amazon", a);
       render("flipkart", f);
+      render("google", g);
     }
 
     // ─── AUTH SYSTEM ─────────────────────────────────────────────────────────

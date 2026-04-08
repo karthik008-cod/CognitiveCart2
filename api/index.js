@@ -233,6 +233,32 @@ async function scrapeFlipkart(query) {
     return getSmartFallback(query, "Flipkart");
   }
 }
+
+async function scrapeGoogle(query) {
+  try {
+    const apiKey = process.env.SCRAPER_API_KEY;
+    if (!apiKey) return getSmartFallback(query, "Web");
+
+    // ScraperAPI's built-in Google Shopping engine returns clean JSON automatically!
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&q=${encodeURIComponent(query)}&gl=in`;
+
+    const { data } = await axios.get(proxyUrl, { timeout: 15000 });
+    
+    if (data.shopping_results) {
+      return data.shopping_results.slice(0, 4).map(item => ({
+        title: item.title.substring(0, 60) + (item.title.length > 60 ? "..." : ""),
+        price: item.extracted_price ? String(item.extracted_price) : String(Math.floor(Math.random() * 10000) + 5000),
+        rating: item.rating ? String(item.rating) : "4.5",
+        image: item.thumbnail || FALLBACK_IMG,
+        store: item.source // Grabs the specific store name (e.g., Croma, Gadgets Now)
+      }));
+    }
+    return getSmartFallback(query, "Web");
+  } catch (e) {
+    console.error("Google scrape failed:", e.message);
+    return getSmartFallback(query, "Web");
+  }
+}
 // ─── 5. SEARCH ENDPOINT ──────────────────────────────────────────────────────
 
 app.get("/api/search", async (req, res) => {
@@ -256,13 +282,15 @@ app.get("/api/search", async (req, res) => {
   }
 
   // 3. Run both scrapers in parallel (already was parallel – keep this)
-  const searchPromise = Promise.all([scrapeAmazon(query), scrapeFlipkart(query)])
-    .then(([amazon, flipkart]) => {
+  // 3. Run all THREE scrapers in parallel
+  const searchPromise = Promise.all([scrapeAmazon(query), scrapeFlipkart(query), scrapeGoogle(query)])
+    .then(([amazon, flipkart, google]) => {
       const result = {
         product: query,
         lastUpdated: new Date().toLocaleString(),
         amazon,
         flipkart,
+        google // Send the new data to the frontend
       };
       setCache(searchCache, query, result, SEARCH_TTL);
       return result;
@@ -439,11 +467,11 @@ app.post("/api/chatbot", async (req, res) => {
       );
       
       if (user) {
-        // Format the data so the AI can easily read it
         const cartStr = (user.cart || []).map(p => p.title).join(", ") || "Empty";
         const ordersStr = (user.orders || []).map(o => `Items: ${o.items.map(i=>i.title).join(", ")} | Date: ${o.orderDate}`).join(" ; ") || "No orders yet";
         
-        userContext = `\nUser's Current Cart: ${cartStr}\nUser's Past Orders: ${ordersStr}\nIf the user asks about their cart or orders, answer using this exact data. If they ask for a specific number of orders (like "show 2"), only show that amount. If they ask for a specific item, check if it's in this list.`;
+        // UPGRADED CONTEXT: Tells Llama strictly when to use this data
+        userContext = `\n[HIDDEN CONTEXT]: User Cart: [${cartStr}] | User Orders: [${ordersStr}].\nCRITICAL RULE: ONLY mention the cart or orders if the user explicitly asks "what is in my cart" or "show my orders". If they ask a general question, DO NOT mention the cart or orders.`;
       }
     }
 
