@@ -233,14 +233,14 @@ async function scrapeFlipkart(query) {
 }
 
 // 3. GOOGLE SHOPPING / OTHER STORES (Powered by ScraperAPI)
+// 3. GOOGLE SHOPPING / OTHER STORES (Powered by ScraperAPI)
 async function scrapeGoogle(query) {
   try {
-    // We are reusing the exact same key you use for Amazon and Flipkart!
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return getSmartFallback(query, "Web");
 
-    // Notice the &engine=google_shopping flag. This tells ScraperAPI to return pure JSON!
-    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&q=${encodeURIComponent(query)}&gl=in`;
+    // ADDED &autoparse=true HERE
+    const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&engine=google_shopping&autoparse=true&q=${encodeURIComponent(query)}&gl=in`;
 
     const { data } = await axios.get(proxyUrl, { timeout: 15000 });
     
