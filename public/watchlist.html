@@ -6,6 +6,7 @@
     <title>Price Watchlist - Cognitive Cart</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -170,14 +171,11 @@
         }
         .price-history h4 {
             font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;
-            letter-spacing: 0.6px; margin-bottom: 8px;
+            letter-spacing: 0.6px; margin-bottom: 12px;
         }
-        .history-items { max-height: 120px; overflow-y: auto; font-size: 0.78rem; }
-        .history-item {
-            padding: 5px 0; border-bottom: 1px solid var(--border); color: var(--text-muted);
+        .chart-container {
+            position: relative; height: 100px; width: 100%;
         }
-        .history-item:last-child { border-bottom: none; }
-        .history-item strong { color: var(--text); }
 
         /* ── Actions ── */
         .card-actions { display: flex; gap: 10px; }
@@ -243,6 +241,7 @@
     <div class="nav-links">
         <a href="index.html">Search</a>
         <a href="watchlist.html" class="active">📊 Watchlist</a>
+        <a href="profile.html">👤 Profile</a>
         <a href="#" id="logoutBtn">Logout</a>
     </div>
 </nav>
@@ -362,8 +361,9 @@
             document.getElementById("watchlistContainer").innerHTML =
                 watchlist.map(item => createWatchlistCard(item)).join("");
 
-            // Wire up remove buttons
+            // Render Charts & Wire Buttons
             watchlist.forEach(item => {
+                renderPriceChart(item);
                 document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => {
                     showConfirm(() => removeFromWatchlist(item._id));
                 });
@@ -419,14 +419,9 @@
                     </div>
 
                     <div class="price-history">
-                        <h4>Price History</h4>
-                        <div class="history-items">
-                            ${item.priceHistory.slice(-5).reverse().map(h => `
-                            <div class="history-item">
-                                <strong>${formatCurrency(h.price)}</strong>
-                                — ${new Date(h.timestamp).toLocaleDateString("en-IN")}
-                                (${h.source || "Unknown"})
-                            </div>`).join("")}
+                        <h4>Price Trend</h4>
+                        <div class="chart-container">
+                            <canvas id="chart-${item._id}"></canvas>
                         </div>
                     </div>
 
@@ -436,6 +431,68 @@
                     </div>
                 </div>
             </div>`;
+    }
+
+    function renderPriceChart(item) {
+        const ctx = document.getElementById(`chart-${item._id}`);
+        if (!ctx) return;
+
+        // Ensure we have at least 2 points to draw a line. If only 1, duplicate it.
+        let history = [...item.priceHistory].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+        if (history.length === 1) {
+            history.unshift({ ...history[0], timestamp: new Date(new Date(history[0].timestamp).getTime() - 86400000).toISOString() });
+        }
+
+        const labels = history.map(h => new Date(h.timestamp).toLocaleDateString("en-IN", { day: 'numeric', month: 'short' }));
+        const data = history.map(h => h.price);
+
+        // Calculate gradient
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 100);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.0)');
+
+        new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Price',
+                    data: data,
+                    borderColor: '#6366f1',
+                    backgroundColor: gradient,
+                    borderWidth: 2,
+                    pointBackgroundColor: '#8b5cf6',
+                    pointBorderColor: '#fff',
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => formatCurrency(context.raw)
+                        }
+                    }
+                },
+                scales: {
+                    x: { display: false },
+                    y: { 
+                        display: false,
+                        min: Math.min(...data) * 0.95,
+                        max: Math.max(...data) * 1.05
+                    }
+                },
+                interaction: {
+                    intersect: false,
+                    mode: 'index',
+                },
+            }
+        });
     }
 
     async function removeFromWatchlist(watchlistId) {

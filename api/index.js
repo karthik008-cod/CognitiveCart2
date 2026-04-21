@@ -658,7 +658,14 @@ router.post("/ai-recommendation", async (req, res) => {
 
   const cacheKey = hashProducts(products) + (query || "");
   const cached = getCached(aiCache, cacheKey);
-  if (cached) return res.json({ explanation: cached, fromCache: true });
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      return res.json({ ...parsed, fromCache: true });
+    } catch {
+      return res.json({ explanation: cached, fromCache: true });
+    }
+  }
 
   const isFashion = detectFashionCategory(query || "");
 
@@ -695,7 +702,8 @@ router.post("/ai-recommendation", async (req, res) => {
     `Consider: price (lower is better), rating (higher is better), and which store is best ` +
     `suited for this product category or matches the user's explicit preference. ` +
     `Reply in 3 plain-text sentences max. Mention the product name, why it's the best pick, ` +
-    `and which store/platform to buy from. No markdown, no asterisks, no bullet points.`;
+    `and which store/platform to buy from. No markdown, no asterisks, no bullet points. ` +
+    `CRITICAL RULE: At the very end of your response, you MUST append the ID of the chosen product exactly like this: |ID:X| (where X is the number from the 'id' field of the chosen product).`;
 
   try {
     const response = await axios.post(
@@ -711,12 +719,23 @@ router.post("/ai-recommendation", async (req, res) => {
       },
     );
 
-    const explanation = response.data.choices[0].message.content.trim();
-    setCache(aiCache, cacheKey, explanation, AI_TTL);
-    res.json({ explanation, isFashion });
+    let explanation = response.data.choices[0].message.content.trim();
+    
+    // Extract the |ID:X| tag
+    let recommendedId = null;
+    const idMatch = explanation.match(/\|ID:\s*(\d+)\s*\|/i);
+    if (idMatch) {
+      recommendedId = parseInt(idMatch[1], 10);
+      // Remove the tag from the final text
+      explanation = explanation.replace(/\|ID:\s*\d+\s*\|/ig, "").trim();
+    }
+
+    const aiData = { explanation, isFashion, recommendedId };
+    setCache(aiCache, cacheKey, JSON.stringify(aiData), AI_TTL);
+    res.json(aiData);
   } catch (err) {
     console.error("Groq AI error:", err?.response?.data || err.message);
-    res.json({ explanation: "AI recommendation temporarily unavailable." });
+    res.json({ explanation: "AI recommendation temporarily unavailable.", isFashion: false });
   }
 });
 

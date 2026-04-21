@@ -61,6 +61,46 @@
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(167, 139, 250, 0.15);
       }
+      .ai-highlight {
+        border: 2px solid transparent !important;
+        background-image: linear-gradient(var(--surface), var(--surface)), linear-gradient(135deg, #f59e0b, #ec4899) !important;
+        background-origin: border-box !important;
+        background-clip: padding-box, border-box !important;
+        box-shadow: 0 8px 30px rgba(245, 158, 11, 0.2) !important;
+        animation: aiGlow 2s infinite alternate;
+        position: relative;
+      }
+      .ai-badge {
+        position: absolute;
+        top: -12px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, #f59e0b, #ec4899);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: bold;
+        z-index: 10;
+        box-shadow: 0 4px 10px rgba(236, 72, 153, 0.4);
+      }
+      @keyframes aiGlow {
+        from { box-shadow: 0 8px 20px rgba(245, 158, 11, 0.15) !important; }
+        to { box-shadow: 0 8px 35px rgba(245, 158, 11, 0.35) !important; }
+      }
+      .filter-chips {
+        display: flex; gap: 8px; justify-content: center; margin-top: 15px; flex-wrap: wrap;
+      }
+      .chip {
+        padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; cursor: pointer;
+        background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+        transition: all 0.2s; color: var(--text-muted); user-select: none;
+      }
+      .chip:hover { background: rgba(255,255,255,0.1); color: var(--text); }
+      .chip.active {
+        background: linear-gradient(135deg, var(--accent), #f97316);
+        color: white; border-color: transparent; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
+      }
     </style>
   </head>
   <body>
@@ -92,6 +132,12 @@
           <option value="rating">Highest Rating</option>
           <option value="delivery">Fast Delivery</option>
         </select>
+      </div>
+      <div class="filter-chips" id="filterChips">
+        <div class="chip active" onclick="applyFilter('all', this)">All</div>
+        <div class="chip" onclick="applyFilter('under1000', this)">Under ₹1000</div>
+        <div class="chip" onclick="applyFilter('topRated', this)">Top Rated 4.5+⭐</div>
+        <div class="chip" onclick="applyFilter('fastDelivery', this)">Fastest Delivery</div>
       </div>
       <p id="time" class="text-muted"></p>
     </div>
@@ -182,6 +228,7 @@
     let flipkartData = [];
     let googleData   = [];
     let currentSort  = "";
+    let currentFilter = "all";
     let isSearching  = false;  // FIX: prevents concurrent duplicate searches
     let searchDebounceTimer = null;
 
@@ -258,9 +305,7 @@
         flipkartData = fkCache;
         googleData   = googleCache;
 
-        render("amazon",   amazonData);
-        render("flipkart", flipkartData);
-        render("google",   googleData);
+        applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'));
 
         // Restore AI recommendation from sessionStorage (survives page refresh)
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
@@ -319,8 +364,7 @@
             document.getElementById("time").innerText = "⚡ Showing last saved results";
             amazonData   = cachedAmazon;
             flipkartData = cachedFk;
-            render("amazon",   amazonData);
-            render("flipkart", flipkartData);
+            applyFilter(currentFilter, document.querySelector('.chip.active'));
           } else {
             document.getElementById("amazon").innerHTML   = `<p style="color:red">${data.error}</p>`;
             document.getElementById("flipkart").innerHTML = `<p style="color:red">${data.error}</p>`;
@@ -341,6 +385,10 @@
         flipkartData = data.flipkart || [];
         googleData   = data.google   || [];
 
+        // Apply any active filter automatically
+        applyFilter(currentFilter, document.querySelector('.chip.active') || document.querySelector('.chip'));
+        getAIRecommendation(q, [...amazonData, ...flipkartData, ...googleData]);
+        
         // FIX: Render products immediately, then fire AI in the background.
         // BEFORE: await getAIRecommendation() — products only appeared AFTER AI was done.
         // AFTER:  products render instantly, AI box updates asynchronously.
@@ -445,6 +493,10 @@
         try {
           const cached = JSON.parse(sessionCached);
           renderAIBox(cached.text || sessionCached, cached.isFashion || false);
+          if (cached.recommendedId) {
+            const recProduct = allProducts[cached.recommendedId - 1];
+            if (recProduct) highlightAIProduct(recProduct.title);
+          }
         } catch {
           renderAIBox(sessionCached, false);
         }
@@ -463,10 +515,37 @@
         const data = await res.json();
         renderAIBox(data.explanation, data.isFashion);
 
+        if (data.recommendedId) {
+          const recProduct = allProducts[data.recommendedId - 1];
+          if (recProduct) highlightAIProduct(recProduct.title);
+        }
+
         // Cache for this tab session
-        if (query) sessionStorage.setItem(cacheKey, JSON.stringify({ text: data.explanation, isFashion: data.isFashion }));
+        if (query) {
+          sessionStorage.setItem(cacheKey, JSON.stringify({ 
+            text: data.explanation, 
+            isFashion: data.isFashion,
+            recommendedId: data.recommendedId
+          }));
+        }
       } catch {
         aiBox.innerHTML = `<div class="ai-box">AI recommendation unavailable.</div>`;
+      }
+    }
+
+    function highlightAIProduct(title) {
+      // Remove old highlights
+      document.querySelectorAll(".ai-highlight").forEach(el => {
+        el.classList.remove("ai-highlight");
+        el.querySelector(".ai-badge")?.remove();
+      });
+      // Find matching card
+      const cards = Array.from(document.querySelectorAll(".card"));
+      const targetCard = cards.find(c => c.querySelector("h4")?.textContent === title);
+      if (targetCard) {
+        targetCard.classList.add("ai-highlight");
+        targetCard.insertAdjacentHTML("afterbegin", `<div class="ai-badge">✨ AI Top Pick</div>`);
+        targetCard.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
 
@@ -485,13 +564,39 @@
         </div>`;
     }
 
-    // ─── SORTING ─────────────────────────────────────────────────────────────
+    // ─── FILTERING & SORTING ─────────────────────────────────────────────────
     function applySort() {
       currentSort = document.getElementById("sortOption").value;
+      renderAll();
+    }
+
+    function applyFilter(filterId, chipElement) {
+      currentFilter = filterId;
+      if (chipElement) {
+        document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+        chipElement.classList.add('active');
+      }
+      renderAll();
+    }
+
+    function renderAll() {
       let a = [...amazonData];
       let f = [...flipkartData];
       let g = [...googleData];
 
+      // 1. Filter
+      if (currentFilter === 'under1000') {
+        const filterFn = p => +p.price < 1000;
+        a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
+      } else if (currentFilter === 'topRated') {
+        const filterFn = p => (+p.rating||0) >= 4.5;
+        a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
+      } else if (currentFilter === 'fastDelivery') {
+        const filterFn = p => (p.deliveryDays||99) <= 2;
+        a = a.filter(filterFn); f = f.filter(filterFn); g = g.filter(filterFn);
+      }
+
+      // 2. Sort
       const sortFn = (x, y) => {
         if (currentSort === "price")    return (+x.price||0) - (+y.price||0);
         if (currentSort === "rating")   return (+y.rating||0) - (+x.rating||0);
@@ -500,9 +605,26 @@
       };
 
       if (currentSort) { a.sort(sortFn); f.sort(sortFn); g.sort(sortFn); }
+      
       render("amazon", a);
       render("flipkart", f);
       render("google", g);
+
+      // Re-highlight AI product
+      const lastSearch = localStorage.getItem("lastSearch");
+      if (lastSearch) {
+        const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
+        if (cachedAI) {
+          try {
+            const parsed = JSON.parse(cachedAI);
+            if (parsed.recommendedId) {
+               const allProducts = [...amazonData, ...flipkartData, ...googleData];
+               const recProduct = allProducts[parsed.recommendedId - 1];
+               if (recProduct) setTimeout(() => highlightAIProduct(recProduct.title), 50);
+            }
+          } catch(e) {}
+        }
+      }
     }
 
     // ─── AUTH SYSTEM ─────────────────────────────────────────────────────────
