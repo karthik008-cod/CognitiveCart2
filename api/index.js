@@ -553,7 +553,7 @@ router.post("/place-order", async (req, res) => {
     const newOrder = {
       items: [...user.cart],
       paymentMethod,
-      orderDate: new Date().toLocaleString(),
+      orderDate: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
     };
     await db
       .collection("users")
@@ -561,9 +561,37 @@ router.post("/place-order", async (req, res) => {
         { username },
         { $push: { orders: newOrder }, $set: { cart: [] } },
       );
-    res.json({ message: "Order placed successfully" });
+    res.json({ message: "Order placed successfully! 🎉" });
   } catch (err) {
     console.error("Place order error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Remove a single item from cart by index
+router.delete("/cart/:username/:index", async (req, res) => {
+  const { username, index } = req.params;
+  try {
+    const db = await connectDB();
+    const user = await db.collection("users").findOne({ username }, { projection: { cart: 1 } });
+    if (!user?.cart) return res.status(404).json({ message: "Cart not found" });
+    const cart = [...user.cart];
+    cart.splice(parseInt(index), 1);
+    await db.collection("users").updateOne({ username }, { $set: { cart } });
+    res.json({ message: "Item removed", cart });
+  } catch (err) {
+    console.error("Remove from cart error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// Clear entire cart
+router.delete("/cart/:username", async (req, res) => {
+  try {
+    const db = await connectDB();
+    await db.collection("users").updateOne({ username: req.params.username }, { $set: { cart: [] } });
+    res.json({ message: "Cart cleared" });
+  } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
 });

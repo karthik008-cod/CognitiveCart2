@@ -830,30 +830,119 @@
       const username = localStorage.getItem("loggedUser");
       if (!username) return;
 
-      document.getElementById("cart").innerHTML =
-        "<h3>🛒 Your Cart</h3><p>Loading…</p>";
+      const cartEl = document.getElementById("cart");
+      cartEl.innerHTML = `
+        <div style="max-width:900px;margin:0 auto;padding:20px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:25px">
+            <h3 style="font-size:1.6rem;display:flex;align-items:center;gap:10px">ඝ Your Cart</h3>
+            <span id="cartCount" style="background:var(--primary);color:#fff;border-radius:20px;padding:4px 14px;font-size:0.9rem"></span>
+          </div>
+          <div id="cartBody" style="display:flex;flex-direction:column;gap:14px"><p style="color:var(--text-muted)">Loading...</p></div>
+          <div id="cartSummary"></div>
+        </div>`;
 
-      const res  = await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`);
-      const cart = await res.json();
+      try {
+        const res  = await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`);
+        const cart = await res.json();
+        renderCart(cart, username);
+      } catch (e) {
+        document.getElementById("cartBody").innerHTML = `<p style="color:#ef4444">Failed to load cart. Please try again.</p>`;
+      }
+    }
 
-      let html = "<h3>🛒 Your Cart</h3><div class='product-grid'>";
-      cart.forEach((p, i) => {
-        html += `
-          <div class="card reveal" style="transition-delay:${i * 0.1}s">
-            <img src="${p.image}" alt="">
-            <h4>${p.title}</h4>
-            <p class="price">₹${p.price}</p>
+    function renderCart(cart, username) {
+      const cartBody    = document.getElementById("cartBody");
+      const cartSummary = document.getElementById("cartSummary");
+      const cartCount   = document.getElementById("cartCount");
+      if (cartCount) cartCount.textContent = cart.length ? `${cart.length} item${cart.length > 1 ? 's' : ''}` : '';
+
+      if (!cart.length) {
+        cartBody.innerHTML = `
+          <div style="text-align:center;padding:60px 20px;background:var(--glass-bg);border-radius:20px;border:1px solid var(--glass-border)">
+            <div style="font-size:4rem;margin-bottom:15px">🛒</div>
+            <h4 style="color:var(--text-muted);font-size:1.2rem;margin-bottom:10px">Your cart is empty</h4>
+            <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">Search for products and add them to your cart!</p>
+            <button onclick="goHome()" class="glow-btn" style="width:auto;padding:10px 25px">Start Shopping</button>
           </div>`;
-      });
-      html += "</div>";
-      if (cart.length) {
-        html += `<button class="glow-btn" style="margin-top:20px" onclick="placeOrder()">Place Order</button>`;
-      } else {
-        html += "<p style='margin-top:20px;color:var(--text-muted)'>Your cart is empty.</p>";
+        cartSummary.innerHTML = '';
+        return;
       }
 
-      document.getElementById("cart").innerHTML = html;
+      // Deduplicate by title + price and compute qty
+      const map = {};
+      cart.forEach((p, i) => {
+        const key = `${p.title}|${p.price}`;
+        if (map[key]) { map[key].qty++; map[key].indices.push(i); }
+        else map[key] = { ...p, qty: 1, indices: [i] };
+      });
+      const items = Object.values(map);
+
+      cartBody.innerHTML = items.map((p, i) => `
+        <div class="reveal" style="display:flex;gap:15px;align-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:16px;transition:0.2s">
+          <img src="${p.image}" alt="" style="width:80px;height:80px;object-fit:cover;border-radius:12px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <p style="font-weight:600;margin-bottom:4px;font-size:0.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${p.title}">${p.title}</p>
+            <p style="color:var(--primary-light);font-size:1.1rem;font-weight:700">&#x20b9;${parseInt(p.price).toLocaleString('en-IN')}</p>
+            ${p.store ? `<span style="font-size:0.75rem;color:var(--text-muted);background:rgba(255,255,255,0.05);border-radius:8px;padding:2px 8px">${p.store}</span>` : ''}
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0">
+            <div style="display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border-radius:10px;padding:4px 8px">
+              <span style="font-size:0.85rem;color:var(--text-muted)">Qty: <strong style="color:var(--text-main)">${p.qty}</strong></span>
+            </div>
+            <p style="font-size:0.85rem;color:var(--text-muted)">Total: <strong style="color:var(--success)">&#x20b9;${(parseInt(p.price) * p.qty).toLocaleString('en-IN')}</strong></p>
+            <button onclick="removeFromCart(${p.indices[p.indices.length-1]})" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:8px;padding:5px 12px;font-size:0.8rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">❌ Remove</button>
+          </div>
+        </div>`).join('');
+
+      // Summary Panel
+      const subtotal = cart.reduce((s, p) => s + parseInt(p.price || 0), 0);
+      const shipping = subtotal > 10000 ? 0 : 99;
+      const total    = subtotal + shipping;
+
+      cartSummary.innerHTML = `
+        <div style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;padding:25px;margin-top:20px">
+          <h4 style="margin-bottom:18px;font-size:1.1rem;border-bottom:1px solid var(--glass-border);padding-bottom:12px">💳 Order Summary</h4>
+          <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:18px">
+            <div style="display:flex;justify-content:space-between;color:var(--text-muted)"><span>Subtotal (${cart.length} items)</span><span style="color:var(--text-main);font-weight:600">&#x20b9;${subtotal.toLocaleString('en-IN')}</span></div>
+            <div style="display:flex;justify-content:space-between;color:var(--text-muted)">
+              <span>Shipping</span>
+              <span style="color:${shipping === 0 ? 'var(--success)' : 'var(--text-main)'}">${shipping === 0 ? '✅ FREE' : '&#x20b9;' + shipping}</span>
+            </div>
+            ${shipping === 0 ? '' : '<div style="font-size:0.78rem;color:var(--text-muted)">Add &#x20b9;' + (10000 - subtotal).toLocaleString('en-IN') + ' more for free shipping!</div>'}
+            <div style="border-top:1px solid var(--glass-border);padding-top:10px;display:flex;justify-content:space-between;font-size:1.15rem;font-weight:700">
+              <span>Total</span>
+              <span style="color:var(--primary-light)">&#x20b9;${total.toLocaleString('en-IN')}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="glow-btn" onclick="placeOrder()" style="flex:1;min-width:140px">Place Order</button>
+            <button onclick="clearCart()" style="flex:1;min-width:140px;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);color:#ef4444;border-radius:12px;padding:12px;cursor:pointer;font-weight:600;transition:0.2s" onmouseover="this.style.background='rgba(239,68,68,0.2)'" onmouseout="this.style.background='rgba(239,68,68,0.1)'">Clear Cart</button>
+          </div>
+        </div>`;
       setTimeout(observeNew, 50);
+    }
+
+    async function removeFromCart(index) {
+      const username = localStorage.getItem("loggedUser");
+      try {
+        const res = await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}/${index}`, { method: "DELETE" });
+        const data = await res.json();
+        toast("Item removed ✔️", "success");
+        renderCart(data.cart || [], username);
+      } catch {
+        toast("Failed to remove item", "error");
+      }
+    }
+
+    async function clearCart() {
+      const username = localStorage.getItem("loggedUser");
+      try {
+        await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`, { method: "DELETE" });
+        toast("Cart cleared!", "success");
+        renderCart([], username);
+      } catch {
+        toast("Failed to clear cart", "error");
+      }
     }
 
     // ─── ORDERS & HISTORY ────────────────────────────────────────────────────
@@ -872,7 +961,7 @@
         body:    JSON.stringify({ username, paymentMethod }),
       });
       const data = await res.json();
-      toast(data.message, "success");
+      toast(data.message, "success", 4000);
       closeModal("paymentModal");
       showSection("orders");
     }
@@ -882,26 +971,53 @@
       const res      = await fetch(`${API_BASE}/orders/${encodeURIComponent(username)}`);
       const orders   = await res.json();
 
-      let html = "<h3>📦 My Orders</h3>";
-      if (!orders.length) { html += "<p style='color:var(--text-muted)'>No orders yet.</p>"; }
+      const ordersEl = document.getElementById("orders");
+      if (!orders.length) {
+        ordersEl.innerHTML = `
+          <div style="max-width:900px;margin:0 auto;padding:20px">
+            <h3 style="font-size:1.6rem;margin-bottom:25px">📦 My Orders</h3>
+            <div style="text-align:center;padding:60px 20px;background:var(--glass-bg);border-radius:20px;border:1px solid var(--glass-border)">
+              <div style="font-size:4rem;margin-bottom:15px">📦</div>
+              <h4 style="color:var(--text-muted);font-size:1.2rem">No orders yet</h4>
+              <p style="color:var(--text-muted);font-size:0.9rem;margin-top:8px">Your placed orders will appear here.</p>
+            </div>
+          </div>`;
+        return;
+      }
 
-      orders.forEach((order, index) => {
+      let html = `<div style="max-width:900px;margin:0 auto;padding:20px"><h3 style="font-size:1.6rem;margin-bottom:25px">📦 My Orders</h3>`;
+      [...orders].reverse().forEach((order, index) => {
+        const orderTotal = (order.items || []).reduce((s, p) => s + parseInt(p.price || 0), 0);
         html += `
-          <div class="order-group reveal">
-            <h4>Order #${index + 1}
-              <span style="font-size:0.8rem;color:var(--text-muted)">(${order.orderDate || "N/A"})</span>
-            </h4>
-            <p><small>Payment: ${order.paymentMethod || "Unknown"}</small></p>
-            <div class="product-grid">`;
+          <div class="order-group reveal" style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;padding:20px;margin-bottom:20px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px">
+              <div>
+                <h4 style="font-size:1rem;margin-bottom:4px">📬Order #${orders.length - index}</h4>
+                <small style="color:var(--text-muted)">${order.orderDate || 'N/A'}</small>
+              </div>
+              <div style="text-align:right">
+                <div style="font-size:0.8rem;color:var(--text-muted)">Payment: <strong style="color:var(--text-main)">${order.paymentMethod || 'Unknown'}</strong></div>
+                <div style="color:var(--primary-light);font-weight:700">Total: ₹${orderTotal.toLocaleString('en-IN')}</div>
+              </div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:10px">`;
 
         (order.items || [order]).forEach(p => {
-          html += `<div class="card"><img src="${p.image}" alt=""><h5>${p.title}</h5><p class="price">₹${p.price}</p></div>`;
+          html += `
+              <div style="display:flex;gap:12px;align-items:center;background:rgba(255,255,255,0.03);border-radius:12px;padding:12px">
+                <img src="${p.image}" alt="" style="width:55px;height:55px;object-fit:cover;border-radius:10px;flex-shrink:0">
+                <div style="flex:1;min-width:0">
+                  <p style="font-weight:500;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.title}</p>
+                  <p style="color:var(--primary-light);font-weight:700">₹${parseInt(p.price).toLocaleString('en-IN')}</p>
+                </div>
+                <span style="background:rgba(16,185,129,0.1);color:var(--success);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:4px 10px;font-size:0.75rem;white-space:nowrap">✅ Delivered</span>
+              </div>`;
         });
-
-        html += `</div></div><hr style="border-color:var(--glass-border);margin:20px 0">`;
+        html += `</div></div>`;
       });
+      html += `</div>`;
 
-      document.getElementById("orders").innerHTML = html;
+      ordersEl.innerHTML = html;
       setTimeout(observeNew, 50);
     }
 
@@ -910,22 +1026,33 @@
       const res      = await fetch(`${API_BASE}/history/${encodeURIComponent(username)}`);
       const history  = await res.json();
 
-      let html = "<h3>🕘 Search History</h3><ul style='list-style:none;padding:0'>";
-      if (!history.length) { html += "<li style='color:var(--text-muted)'>No history yet.</li>"; }
+      const historyEl = document.getElementById("history");
+      if (!history.length) {
+        historyEl.innerHTML = `
+          <div style="max-width:900px;margin:0 auto;padding:20px">
+            <h3 style="font-size:1.6rem;margin-bottom:25px">🕘 Search History</h3>
+            <div style="text-align:center;padding:60px 20px;background:var(--glass-bg);border-radius:20px;border:1px solid var(--glass-border)">
+              <div style="font-size:4rem;margin-bottom:15px">🔍</div>
+              <h4 style="color:var(--text-muted)">No search history yet</h4>
+            </div>
+          </div>`;
+        return;
+      }
 
-      history.forEach((h, i) => {
+      let html = `<div style="max-width:900px;margin:0 auto;padding:20px"><h3 style="font-size:1.6rem;margin-bottom:25px">🕘 Search History</h3><div style="display:flex;flex-direction:column;gap:10px">`;
+      [...history].reverse().forEach((h, i) => {
+        const safeQuery = h.searchQuery.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
         html += `
-          <li class="reveal" style="background:var(--glass-bg);padding:15px;margin-bottom:10px;
-                                    border-radius:8px;border:1px solid var(--glass-border);
-                                    transition-delay:${i * 0.05}s;cursor:pointer"
-              onclick="document.getElementById('item').value='${h.searchQuery}';goHome();search()">
-            <strong>${h.searchQuery}</strong>
-            <small class="text-muted" style="float:right">${h.time}</small>
-          </li>`;
+          <div class="reveal" style="background:var(--glass-bg);padding:16px 20px;border-radius:14px;border:1px solid var(--glass-border);transition-delay:${i * 0.03}s;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:background 0.2s" onclick="document.getElementById('item').value='${safeQuery}';goHome();search()" onmouseover="this.style.background='rgba(255,255,255,0.07)'" onmouseout="this.style.background='var(--glass-bg)'">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:1.1rem">🔍</span>
+              <strong style="font-size:0.95rem">${h.searchQuery}</strong>
+            </div>
+            <small style="color:var(--text-muted);font-size:0.8rem;white-space:nowrap;margin-left:12px">${h.time ? h.time.split(',')[0] : ''}</small>
+          </div>`;
       });
-
-      html += "</ul>";
-      document.getElementById("history").innerHTML = html;
+      html += `</div></div>`;
+      historyEl.innerHTML = html;
       setTimeout(observeNew, 50);
     }
 
