@@ -114,16 +114,45 @@ router.post("/send-otp", async (req, res) => {
     await emailApi.sendTransacEmail({
       sender: { email: "aakasltf06@gmail.com", name: "Cognitive Cart" },
       to: [{ email: username, name: username.split("@")[0] }],
-      subject: "Your Cognitive Cart OTP Code",
+      subject: "🔐 Your Cognitive Cart Verification Code",
       htmlContent: `
-        <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 20px;">
-          <div style="max-width: 420px; margin: auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.08); text-align: center;">
-            <h2 style="color: #1f2937; margin-bottom: 12px;">Cognitive Cart</h2>
-            <p style="color: #475569; margin-bottom: 20px;">Use the following code to verify your email address:</p>
-            <div style="font-size: 36px; font-weight: 700; letter-spacing: 6px; color: #4338ca; margin: 20px 0;">${otp}</div>
-            <p style="color: #6b7280; font-size: 14px;">This code expires in 5 minutes.</p>
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 20px">
+    <tr><td align="center">
+      <table width="480" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#1e1b4b,#1e293b);border-radius:24px;overflow:hidden;border:1px solid rgba(99,102,241,0.2);box-shadow:0 32px 80px rgba(0,0,0,0.5)">
+        <!-- Header -->
+        <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px 40px;text-align:center">
+          <div style="font-size:2.5rem;margin-bottom:8px">🛒</div>
+          <h1 style="margin:0;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:-0.5px">Cognitive Cart</h1>
+          <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:0.88rem">Smart Price Comparison</p>
+        </td></tr>
+        <!-- Body -->
+        <tr><td style="padding:40px">
+          <h2 style="margin:0 0 12px;color:#f1f5f9;font-size:1.25rem;font-weight:700">Verify Your Email 🔐</h2>
+          <p style="margin:0 0 28px;color:#94a3b8;font-size:0.9rem;line-height:1.6">Hi <strong style="color:#c7d2fe">${username.split('@')[0]}</strong>! Enter this one-time code to log in to your Cognitive Cart account:</p>
+          <!-- OTP Box -->
+          <div style="background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);border-radius:16px;padding:28px;text-align:center;margin-bottom:28px">
+            <p style="margin:0 0 8px;color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">Your Verification Code</p>
+            <div style="font-size:3rem;font-weight:900;letter-spacing:12px;color:#a5b4fc;font-variant-numeric:tabular-nums">${otp}</div>
           </div>
-        </div>
+          <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);border-radius:10px;padding:12px 16px;margin-bottom:28px;display:flex;align-items:center;gap:10px">
+            <span style="font-size:1.2rem">⏱️</span>
+            <p style="margin:0;color:#fde68a;font-size:0.85rem">This code expires in <strong>5 minutes</strong>. Do not share it with anyone.</p>
+          </div>
+          <p style="margin:0;color:#64748b;font-size:0.8rem;line-height:1.6">If you didn't request this code, you can safely ignore this email. Your account is secure.</p>
+        </td></tr>
+        <!-- Footer -->
+        <tr><td style="padding:20px 40px 32px;border-top:1px solid rgba(255,255,255,0.06)">
+          <p style="margin:0;color:#475569;font-size:0.75rem;text-align:center">© Cognitive Cart · Sent at ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>
       `,
     });
 
@@ -798,11 +827,16 @@ router.post("/chatbot", async (req, res) => {
     }
 
     const prompt =
-      `You are the AI assistant for 'Cognitive Cart', a price comparison app. ` +
-      `Help users find deals, compare Amazon vs Flipkart, and answer cart/order questions. ` +
-      `Be friendly and concise — max 2-3 sentences. No markdown or bold text. ` +
+      `You are 'CartBot', the friendly and knowledgeable AI shopping assistant for Cognitive Cart — India's smartest price comparison app. ` +
+      `Your personality: warm, helpful, a bit enthusiastic about saving money, conversational. ` +
+      `You specialize in: finding the best deals between Amazon, Flipkart, Meesho, Myntra, and other Indian platforms; explaining price trends; helping users decide what to buy; answering general shopping questions. ` +
+      `Guidelines: Keep replies to 2-3 sentences max. Use natural Indian English (can use INR ₹ signs). ` +
+      `Use emojis sparingly (1-2 max per reply) to stay friendly but professional. ` +
+      `If asked about platform comparisons: Amazon is best for electronics & branded goods, Flipkart is great for phones & appliances, Meesho/Myntra excel at fashion & ethnic wear at lower prices. ` +
+      `If asked what you can do, mention: searching for best deals, comparing platforms, explaining price trends, watchlist tips, and answering product questions. ` +
+      `Never say you are an AI language model — you ARE CartBot. Never mention OpenAI, Meta, or Groq. ` +
       userContext +
-      `\nUser: "${message.trim()}"`;
+      `\nUser message: "${message.trim()}"`;
 
     const response = await axios.post(
       "https://api.groq.com/openai/v1/chat/completions",
@@ -954,42 +988,65 @@ async function sendPriceDropEmail(username, product, priceDetails) {
   try {
     const discountBadge = Math.round(priceDetails.dropPercentage);
     const htmlContent = `
-      <div style="font-family: Arial, sans-serif; background: #f8fafc; padding: 20px;">
-        <div style="max-width: 600px; margin: auto; background: white; padding: 30px; border-radius: 16px; box-shadow: 0 10px 30px rgba(15,23,42,0.08);">
-          <h2 style="color: #1f2937; margin-bottom: 12px;">🎉 Price Drop Alert!</h2>
-          <p style="color: #475569; margin-bottom: 20px; font-size: 16px;">Great news! A product in your watchlist has dropped in price.</p>
-          
-          <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 16px; margin: 20px 0; border-radius: 8px;">
-            <h3 style="color: #1e40af; margin-top: 0;">${product.title}</h3>
-            <div style="display: flex; gap: 20px; margin: 16px 0;">
-              <div>
-                <p style="color: #6b7280; font-size: 12px; margin: 0 0 4px 0;">Previous Price</p>
-                <p style="font-size: 24px; font-weight: 700; color: #9ca3af; margin: 0; text-decoration: line-through;">₹${priceDetails.previousPrice.toLocaleString()}</p>
-              </div>
-              <div style="display: flex; align-items: center;">
-                <span style="font-size: 32px; color: #059669;">→</span>
-              </div>
-              <div>
-                <p style="color: #6b7280; font-size: 12px; margin: 0 0 4px 0;">New Price</p>
-                <p style="font-size: 24px; font-weight: 700; color: #059669; margin: 0;">₹${priceDetails.currentPrice.toLocaleString()}</p>
-              </div>
-            </div>
-            
-            <div style="background: #dcfce7; padding: 12px; border-radius: 8px; margin-top: 16px; text-align: center;">
-              <span style="color: #15803d; font-weight: 700; font-size: 18px;">Save ₹${priceDetails.dropAmount.toLocaleString()} (${discountBadge}% OFF)</span>
-            </div>
-          </div>
-          
-          <p style="color: #475569; margin-top: 20px; font-size: 14px;">Check out your watchlist to view more details and add to cart.</p>
-          <div style="text-align: center; margin-top: 25px;">
-            <a href="http://localhost:3000" style="display: inline-block; background: #3b82f6; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">View Watchlist</a>
-          </div>
-          
-          <p style="color: #9ca3af; font-size: 12px; margin-top: 25px; border-top: 1px solid #e5e7eb; padding-top: 15px;">
-            Cognitive Cart Price Tracking System | ${new Date().toLocaleString()}
-          </p>
-        </div>
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:'Segoe UI',Arial,sans-serif">
+<table width="100%" cellpadding="0" cellspacing="0" style="background:#0f172a;padding:40px 20px">
+  <tr><td align="center">
+  <table width="560" cellpadding="0" cellspacing="0" style="background:linear-gradient(135deg,#052e16,#064e3b);border-radius:24px;overflow:hidden;border:1px solid rgba(16,185,129,0.3);box-shadow:0 32px 80px rgba(0,0,0,0.5)">
+    <!-- Header -->
+    <tr><td style="background:linear-gradient(135deg,#065f46,#047857);padding:32px 40px;text-align:center;position:relative">
+      <div style="font-size:3rem;margin-bottom:8px">🎉</div>
+      <h1 style="margin:0;color:#fff;font-size:1.6rem;font-weight:900;letter-spacing:-0.5px">Price Drop Alert!</h1>
+      <div style="display:inline-block;background:rgba(255,255,255,0.15);border-radius:20px;padding:6px 20px;margin-top:10px">
+        <span style="color:#fff;font-weight:800;font-size:1.1rem">${discountBadge}% OFF 🔥</span>
       </div>
+    </td></tr>
+    <!-- Product Info -->
+    <tr><td style="padding:32px 40px">
+      <p style="margin:0 0 20px;color:#6ee7b7;font-size:0.9rem">Good news, <strong style="color:#fff">${username.split('@')[0]}</strong>! A product you're watching just dropped in price.</p>
+      <div style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:16px;padding:20px;margin-bottom:24px">
+        ${product.image ? `<img src="${product.image}" alt="" style="width:80px;height:80px;object-fit:contain;border-radius:12px;background:rgba(255,255,255,0.05);float:right;margin-left:16px">` : ''}
+        <p style="margin:0 0 8px;color:#a7f3d0;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.5px">${product.store || 'Online Store'}</p>
+        <h3 style="margin:0 0 16px;color:#fff;font-size:1rem;line-height:1.5">${product.title}</h3>
+        <div style="clear:both"></div>
+        <!-- Price comparison -->
+        <table width="100%" cellpadding="0" cellspacing="0">
+          <tr>
+            <td style="text-align:center;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);border-radius:12px;padding:14px">
+              <p style="margin:0 0 4px;color:#fca5a5;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px">Was</p>
+              <p style="margin:0;font-size:1.5rem;font-weight:700;color:#fca5a5;text-decoration:line-through">₹${priceDetails.previousPrice.toLocaleString('en-IN')}</p>
+            </td>
+            <td style="text-align:center;padding:0 12px;color:#6ee7b7;font-size:1.5rem">→</td>
+            <td style="text-align:center;background:rgba(16,185,129,0.15);border:1px solid rgba(16,185,129,0.3);border-radius:12px;padding:14px">
+              <p style="margin:0 0 4px;color:#6ee7b7;font-size:0.7rem;text-transform:uppercase;letter-spacing:0.5px">Now</p>
+              <p style="margin:0;font-size:1.5rem;font-weight:900;color:#34d399">₹${priceDetails.currentPrice.toLocaleString('en-IN')}</p>
+            </td>
+          </tr>
+        </table>
+      </div>
+      <!-- Savings banner -->
+      <div style="background:linear-gradient(135deg,rgba(16,185,129,0.2),rgba(5,150,105,0.1));border:1px solid rgba(16,185,129,0.4);border-radius:14px;padding:18px;text-align:center;margin-bottom:28px">
+        <p style="margin:0 0 4px;color:#6ee7b7;font-size:0.8rem">You save</p>
+        <p style="margin:0;font-size:1.8rem;font-weight:900;color:#34d399">₹${priceDetails.dropAmount.toLocaleString('en-IN')}</p>
+        <p style="margin:4px 0 0;color:#a7f3d0;font-size:0.85rem">${discountBadge}% off the original price</p>
+      </div>
+      <!-- CTA -->
+      <div style="text-align:center;margin-bottom:28px">
+        <a href="https://cognitive-cart2.vercel.app/watchlist.html" style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#fff;padding:15px 36px;border-radius:12px;text-decoration:none;font-weight:800;font-size:1rem;box-shadow:0 8px 24px rgba(5,150,105,0.4)">View Watchlist →</a>
+      </div>
+      <p style="margin:0;color:#4b5563;font-size:0.8rem;text-align:center">You're receiving this because you added this product to your Cognitive Cart watchlist.</p>
+    </td></tr>
+    <!-- Footer -->
+    <tr><td style="padding:16px 40px 28px;border-top:1px solid rgba(255,255,255,0.05)">
+      <p style="margin:0;color:#374151;font-size:0.72rem;text-align:center">© Cognitive Cart · ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</p>
+    </td></tr>
+  </table>
+  </td></tr>
+</table>
+</body>
+</html>
     `;
 
     await emailApi.sendTransacEmail({

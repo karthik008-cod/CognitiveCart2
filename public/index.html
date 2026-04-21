@@ -197,12 +197,18 @@
     <div id="chatToggle">💬</div>
     <div id="chatBox" class="chat-hidden">
       <div class="chat-header">
-        Cognitive Cart Assistant
+        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> CartBot</span>
         <span class="close-btn" id="closeChat">✖</span>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
+      <div id="chatSuggestions" style="display:flex;flex-wrap:wrap;gap:6px;padding:8px 12px;border-top:1px solid rgba(255,255,255,0.06)">
+        <button onclick="injectSuggestion('Best deal right now?')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">Best deal right now?</button>
+        <button onclick="injectSuggestion('Compare Amazon vs Flipkart')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">Amazon vs Flipkart?</button>
+        <button onclick="injectSuggestion('What is in my cart?')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">My cart?</button>
+        <button onclick="injectSuggestion('Tip to save money shopping online')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">💡 Savings tip</button>
+      </div>
       <div class="chat-input">
-        <input id="chatInput" placeholder="Ask something..." />
+        <input id="chatInput" placeholder="Ask CartBot anything…" />
         <button id="voiceBtn" title="Voice Input">🎙</button>
         <button id="sendBtn">Send</button>
       </div>
@@ -1116,6 +1122,10 @@
       chatToggle.addEventListener("click", () => {
         chatBox.classList.remove("chat-hidden");
         chatToggle.style.transform = "scale(0)";
+        // Show welcome message once
+        if (!messagesDiv.children.length) {
+          addMessage("bot", "👋 Hey! I'm **CartBot**, your smart shopping assistant. Ask me about deals, platforms, your cart, or savings tips!");
+        }
       });
       closeBtn.addEventListener("click", () => {
         chatBox.classList.add("chat-hidden");
@@ -1127,11 +1137,11 @@
 
       async function sendMessage() {
         const message = input.value.trim();
-        // FIX: guard against empty message AND concurrent sends
         if (!message || isChatSending) return;
 
         isChatSending = true;
         sendBtn.disabled = true;
+        document.getElementById("chatSuggestions").style.display = "none";
         addMessage("user", message);
         input.value = "";
 
@@ -1166,10 +1176,24 @@
       function addMessage(type, text) {
         const div = document.createElement("div");
         div.className = `msg ${type} reveal active`;
-        div.innerText = text;
+        if (type === "bot") {
+          // Render **bold** markdown and newlines
+          div.innerHTML = text
+            .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+            .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+            .replace(/\n/g, "<br>");
+        } else {
+          div.textContent = text;
+        }
         messagesDiv.appendChild(div);
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
       }
+
+      window.injectSuggestion = function(text) {
+        input.value = text;
+        input.focus();
+        sendMessage();
+      };
     });
 
     // ─── AUTH INPUT LISTENER ─────────────────────────────────────────────────
