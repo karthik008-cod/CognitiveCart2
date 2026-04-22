@@ -205,6 +205,41 @@ router.post("/verify-otp", async (req, res) => {
 // ─── 4. SCRAPERS ─────────────────────────────────────────────────────────────
 
 // Upgraded to a sleek tech image instead of the blank white circle
+// Clean up links to ensure they are direct and not wrapped in proxies
+function cleanProductLink(link) {
+  if (!link || typeof link !== 'string') return link;
+  try {
+    let finalLink = link;
+    
+    // 1. Remove ScraperAPI proxy wrapper if present
+    if (finalLink.includes("api.scraperapi.com")) {
+      const searchParams = new URLSearchParams(finalLink.split('?')[1]);
+      const targetUrl = searchParams.get('url');
+      if (targetUrl) finalLink = targetUrl;
+    }
+
+    // 2. Remove Google Search redirect wrapper
+    if (finalLink.includes("/url?q=")) {
+      const parts = finalLink.split("/url?q=");
+      if (parts[1]) {
+        finalLink = decodeURIComponent(parts[1].split("&")[0]);
+      }
+    }
+
+    // 3. Remove extra tracking params from Amazon/Flipkart
+    if (finalLink.includes("amazon.in") && finalLink.includes("/dp/")) {
+      finalLink = finalLink.split("?")[0];
+    }
+    if (finalLink.includes("flipkart.com") && finalLink.includes("?pid=")) {
+      finalLink = finalLink.split("&")[0];
+    }
+
+    return finalLink;
+  } catch (e) {
+    return link;
+  }
+}
+
 // Fallback removed as requested
 
 // 1. AMAZON (Powered by ScraperAPI)
@@ -232,11 +267,7 @@ async function scrapeAmazon(query) {
           .replace(/,/g, "");
         const image = $(el).find("img.s-image").attr("src");
         const linkElem = $(el).find("a.a-link-normal").attr("href") || $(el).find("h2 a").attr("href");
-        let link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.amazon.in${linkElem}`) : `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
-        // Strip any query parameters that might break the link or redirect it weirdly
-        if (link.includes("/dp/")) {
-          link = link.split("?")[0];
-        }
+        let link = cleanProductLink(linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.amazon.in${linkElem}`) : `https://www.amazon.in/s?k=${encodeURIComponent(query)}`);
         
         if (title && price) {
           results.push({
@@ -290,11 +321,7 @@ async function scrapeFlipkart(query) {
           });
 
         const linkElem = $(el).find("a").attr("href") || $(el).attr("href");
-        let link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.flipkart.com${linkElem}`) : `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
-        // Remove tracking/pid parameters to ensure clean direct link
-        if (link.includes("?pid=")) {
-          link = link.split("&")[0];
-        }
+        let link = cleanProductLink(linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.flipkart.com${linkElem}`) : `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`);
 
         if (title && price) {
           results.push({
@@ -346,7 +373,7 @@ async function scrapeGoogle(query) {
             const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                           String(Math.floor(Math.random() * 20000) + 8000);
             const title = (item.title || "").trim();
-            const link = item.product_link || item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+            const link = cleanProductLink(item.product_link || item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`);
             return {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
@@ -393,7 +420,7 @@ async function scrapeGoogle(query) {
             const price = rawPrice.toString().replace(/[^\d]/g, "") ||
                           String(Math.floor(Math.random() * 20000) + 8000);
             const title = (item.title || item.name || "").trim();
-            const link = item.product_link || item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
+            const link = cleanProductLink(item.product_link || item.link || `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`);
             return {
               title: title.substring(0, 65) + (title.length > 65 ? "..." : ""),
               price,
@@ -435,11 +462,7 @@ async function scrapeGoogle(query) {
         const image =
           $(el).find("img").attr("src") || $(el).find("img").attr("data-src") || "https://images.unsplash.com/photo-1526406915894-7bcd65f60845?w=500&q=80";
         const linkElem = $(el).find("a[href^='http']").attr("href") || $(el).find("a").attr("href");
-        let link = linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.google.com${linkElem}`) : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`;
-        // Clean up Google tracking redirect links
-        if (link.includes("/url?q=")) {
-          link = decodeURIComponent(link.split("/url?q=")[1].split("&")[0]);
-        }
+        let link = cleanProductLink(linkElem ? (linkElem.startsWith('http') ? linkElem : `https://www.google.com${linkElem}`) : `https://www.google.com/search?tbm=shop&q=${encodeURIComponent(query)}`);
 
         if (title && price) {
           results.push({
