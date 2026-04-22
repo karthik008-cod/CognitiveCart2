@@ -542,18 +542,22 @@
                               🏪 View on ${storeName}
                             </a>`;
         return `
-          <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.08}s">
-            <img src="${p.image}"
-                 onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png'"
-                 alt="product" loading="lazy" />
-            <h4>${p.title}</h4>
-            <p class="price">₹${p.price}</p>
-            <p class="rating">⭐ ${p.rating}</p>
-            ${deliveryHtml}
-            ${storeBadge}
-            ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
-            <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
-            <button class="watch-btn" data-product="${productData}" onclick="addToWatchlist(this)" style="background: linear-gradient(135deg, #667eea, #764ba2); margin-top: 8px; padding: 0.6rem;">📊 Watch Price</button>
+          <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.06}s">
+            <div class="card-img-wrap">
+              <img src="${p.image}"
+                   onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png'"
+                   alt="${p.title}" loading="lazy" />
+            </div>
+            <div class="card-body">
+              <h4>${p.title}</h4>
+              <p class="price">₹${p.price}</p>
+              <p class="rating">⭐ ${p.rating}</p>
+              ${deliveryHtml}
+              ${storeBadge}
+              ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
+              <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
+              <button class="watch-btn" data-product="${productData}" onclick="addToWatchlist(this)" style="background:linear-gradient(135deg,#667eea,#764ba2);margin-top:4px;padding:8px;font-size:0.82rem;border-radius:8px">📊 Watch Price</button>
+            </div>
           </div>`;
       });
 
