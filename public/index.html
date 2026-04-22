@@ -115,7 +115,7 @@
     </div>
 
     <div class="hero-search reveal active">
-      <h1>Find the Best Deals instantly</h1>
+      <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
       <!--
         FIX: onkeydown with debounce instead of no keyboard support.
         The search button has type="button" to avoid accidental form submit.
@@ -364,6 +364,18 @@
 
     // ─── WINDOW LOAD ─────────────────────────────────────────────────────────
     window.onload = function () {
+      const taglines = [
+        "Unleash Savings: Smart Shopping Starts Here",
+        "Your Personal AI Deal Hunter",
+        "Compare Instantly. Save Massively.",
+        "Why Pay More? Find the Lowest Price Now!",
+        "Shop Smarter, Not Harder",
+        "Instant Price Drops, Zero Effort",
+        "One Search, Every Store, Best Deals",
+        "AI-Powered Savings at Your Fingertips"
+      ];
+      document.getElementById("heroTagline").innerText = taglines[Math.floor(Math.random() * taglines.length)];
+
       const user = localStorage.getItem("loggedUser");
       if (user) showUser(user);
 
