@@ -152,6 +152,15 @@
       </div>
     </div>
 
+    <!-- Pagination -->
+    <div id="paginationControls" style="display:none; justify-content: center; align-items: center; gap: 15px; margin-top: 30px; padding: 20px; flex-wrap: wrap;">
+      <button onclick="changePage(-1)" id="prevPageBtn" class="chip" style="padding: 10px 24px; font-weight: 600; border-radius: 12px; transition: 0.3s;">← Previous</button>
+      <div style="background: rgba(124,109,247,0.1); padding: 8px 18px; border-radius: 20px; border: 1px solid rgba(124,109,247,0.2);">
+        <span id="pageDisplay" style="font-weight: 700; color: var(--primary); font-size: 0.95rem;">Page 1</span>
+      </div>
+      <button onclick="changePage(1)" id="nextPageBtn" class="chip" style="padding: 10px 24px; font-weight: 600; border-radius: 12px; transition: 0.3s;">Next →</button>
+    </div>
+
     <div id="cart"    class="user-section reveal"></div>
     <div id="orders"  class="user-section reveal"></div>
     <div id="history" class="user-section reveal"></div>
@@ -256,6 +265,7 @@
     let currentFilter = "all";
     let isSearching  = false;  // FIX: prevents concurrent duplicate searches
     let searchDebounceTimer = null;
+    let currentPage = 1;
 
     // ─── CHAT ELEMENT REFS (hoisted here so drag listeners can use them) ──────
     const chatBox  = document.getElementById("chatBox");
@@ -369,10 +379,11 @@
       searchDebounceTimer = setTimeout(search, 300);
     }
 
-    async function search() {
+    async function search(page = 1) {
       const q = document.getElementById("item").value.trim();
       if (!q || isSearching) return;
 
+      currentPage = page;
       isSearching = true;
 
       document.getElementById("storesSection").style.display = "flex";
@@ -395,7 +406,7 @@
         const stores = ["amazon", "flipkart", "google"];
         
         const fetchPromises = stores.map(store => 
-          fetch(`${API_BASE}/search/${store}?q=${encodeURIComponent(q)}`)
+          fetch(`${API_BASE}/search/${store}?q=${encodeURIComponent(q)}&page=${currentPage}`)
             .then(res => res.json())
             .then(data => {
               if (data.error || !data.data || data.data.length === 0) {
@@ -465,7 +476,25 @@
         aiBox.innerHTML = "";
       } finally {
         isSearching = false;
+        
+        // Update pagination UI
+        const pg = document.getElementById("paginationControls");
+        if (pg) {
+          pg.style.display = "flex";
+          document.getElementById("pageDisplay").innerText = `Page ${currentPage}`;
+          document.getElementById("prevPageBtn").disabled = (currentPage === 1);
+          document.getElementById("prevPageBtn").style.opacity = (currentPage === 1) ? "0.5" : "1";
+        }
       }
+    }
+
+    function changePage(delta) {
+      const newPage = currentPage + delta;
+      if (newPage < 1) return;
+      
+      // Scroll to top of results
+      document.getElementById("storesSection").scrollIntoView({ behavior: 'smooth' });
+      search(newPage);
     }
 
     // ─── RENDER PRODUCTS ─────────────────────────────────────────────────────

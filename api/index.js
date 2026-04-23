@@ -243,12 +243,12 @@ function cleanProductLink(link) {
 // Fallback removed as requested
 
 // 1. AMAZON (Powered by ScraperAPI)
-async function scrapeAmazon(query) {
+async function scrapeAmazon(query, page = 1) {
   try {
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return [];
 
-    const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}`;
+    const targetUrl = `https://www.amazon.in/s?k=${encodeURIComponent(query)}${page > 1 ? `&page=${page}` : ""}`;
     // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
@@ -288,12 +288,12 @@ async function scrapeAmazon(query) {
 }
 
 // 2. FLIPKART (Powered by ScraperAPI)
-async function scrapeFlipkart(query) {
+async function scrapeFlipkart(query, page = 1) {
   try {
     const apiKey = process.env.SCRAPER_API_KEY;
     if (!apiKey) return [];
 
-    const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}`;
+    const targetUrl = `https://www.flipkart.com/search?q=${encodeURIComponent(query)}${page > 1 ? `&page=${page}` : ""}`;
     // URL updated to ScraperAPI
     const proxyUrl = `http://api.scraperapi.com?api_key=${apiKey}&url=${encodeURIComponent(targetUrl)}&premium=true&country_code=in`;
 
@@ -343,7 +343,7 @@ async function scrapeFlipkart(query) {
 
 // 3. GOOGLE SHOPPING / OTHER STORES
 // Strategy: SerpAPI (best) → ScraperAPI structured endpoint → fallback
-async function scrapeGoogle(query) {
+async function scrapeGoogle(query, page = 1) {
 
   // ── STRATEGY 1: SerpAPI (most reliable, 100 free/month) ──────────────────
   // Sign up free at https://serpapi.com and paste the key into your .env as SERPAPI_KEY
@@ -356,7 +356,8 @@ async function scrapeGoogle(query) {
           q:       query,
           gl:      "in",          // India
           hl:      "en",
-          num:     "8",
+          num:     "10",
+          start:   (page - 1) * 10,
           api_key: serpKey,
         },
         timeout: 12000,
@@ -488,10 +489,11 @@ async function scrapeGoogle(query) {
 
 router.get("/search/:store", async (req, res) => {
   const query = (req.query.q || "").trim().toLowerCase();
+  const page = parseInt(req.query.page) || 1;
   const store = req.params.store;
   if (!query) return res.status(400).json({ error: "Query required" });
 
-  const cacheKey = `${store}_${query}`;
+  const cacheKey = `${store}_${query}_p${page}`;
   const cached = getCached(searchCache, cacheKey);
   if (cached) {
     return res.json({ data: cached, fromCache: true });
@@ -507,9 +509,9 @@ router.get("/search/:store", async (req, res) => {
   }
 
   let scraperPromise;
-  if (store === "amazon") scraperPromise = scrapeAmazon(query);
-  else if (store === "flipkart") scraperPromise = scrapeFlipkart(query);
-  else if (store === "google") scraperPromise = scrapeGoogle(query);
+  if (store === "amazon") scraperPromise = scrapeAmazon(query, page);
+  else if (store === "flipkart") scraperPromise = scrapeFlipkart(query, page);
+  else if (store === "google") scraperPromise = scrapeGoogle(query, page);
   else return res.status(400).json({ error: "Invalid store" });
 
   inflightSearches.set(cacheKey, scraperPromise);
@@ -666,9 +668,12 @@ router.get("/history/:username", async (req, res) => {
       .collection("users")
       .findOne(
         { username: req.params.username },
-        { projection: { history: 1 } },
+        { projection: { history: 1, totalSearches: 1 } },
       );
-    res.json(user?.history || []);
+    res.json({ 
+      history: user?.history || [], 
+      totalSearches: user?.totalSearches || (user?.history?.length || 0) 
+    });
   } catch (err) {
     console.error("Get history error:", err);
     res.status(500).json({ message: "Server error" });
@@ -687,9 +692,10 @@ router.post("/history", async (req, res) => {
         $push: {
           history: {
             $each: [{ searchQuery, time: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }), timestamp: new Date().toISOString() }],
-            $slice: -50,
+            $slice: -500,
           },
         },
+        $inc: { totalSearches: 1 }
       },
       { upsert: true },
     );

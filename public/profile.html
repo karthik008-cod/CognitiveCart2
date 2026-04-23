@@ -134,6 +134,7 @@
     })();
 
     let userHistory = [], watchlistData = [], cartData = [], ordersData = [];
+    let totalSearchesCount = 0;
 
     window.onload = async () => {
         const user = localStorage.getItem("loggedUser");
@@ -215,7 +216,14 @@
     const fc = n => `₹${parseInt(n || 0).toLocaleString("en-IN")}`;
 
     async function fetchHistory(u) {
-        try { const r = await fetch(`${API_BASE}/history/${encodeURIComponent(u)}`); if (r.ok) userHistory = await r.json(); } catch {}
+        try { 
+            const r = await fetch(`${API_BASE}/history/${encodeURIComponent(u)}`); 
+            if (r.ok) {
+                const data = await r.json();
+                userHistory = data.history || [];
+                totalSearchesCount = data.totalSearches || userHistory.length;
+            }
+        } catch {}
     }
     async function fetchWatchlist(u) {
         try { const r = await fetch(`${API_BASE}/watchlist/${encodeURIComponent(u)}`); if (r.ok) watchlistData = await r.json(); } catch {}
@@ -230,7 +238,7 @@
         const totalValue = watchlistData.reduce((t, i) => t + (i.currentPrice || 0), 0);
         const drops = watchlistData.filter(i => i.priceDrops?.length > 0).length;
 
-        document.getElementById("sSearches").textContent = userHistory.length;
+        document.getElementById("sSearches").textContent = totalSearchesCount;
         document.getElementById("sSearchesSub").textContent = userHistory.length ? `Last: "${userHistory[userHistory.length - 1].searchQuery.substring(0, 20)}"` : "No searches yet";
         document.getElementById("sWatching").textContent = watchlistData.length;
         document.getElementById("sWatchingSub").textContent = `${drops} price drop${drops !== 1 ? 's' : ''} detected`;
@@ -240,7 +248,7 @@
         document.getElementById("sOrdersSub").textContent = ordersData.length ? `Latest: ${ordersData[ordersData.length - 1].orderDate?.split(',')[0] || '—'}` : "No orders yet";
 
         // Badges
-        document.getElementById("searcherBadge").textContent = `🔍 ${userHistory.length} Searches`;
+        document.getElementById("searcherBadge").textContent = `🔍 ${totalSearchesCount} Searches`;
         document.getElementById("saverBadge").textContent = savings > 0 ? `💰 Saved ${fc(savings)}` : "💰 No Savings Yet";
         document.getElementById("watcherBadge").textContent = `👁️ ${watchlistData.length} Watching`;
 
