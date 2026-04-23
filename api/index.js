@@ -672,7 +672,7 @@ router.get("/history/:username", async (req, res) => {
       );
     res.json({ 
       history: user?.history || [], 
-      totalSearches: user?.totalSearches || (user?.history?.length || 0) 
+      totalSearches: Math.max(user?.totalSearches || 0, user?.history?.length || 0)
     });
   } catch (err) {
     console.error("Get history error:", err);
@@ -686,6 +686,11 @@ router.post("/history", async (req, res) => {
   if (!username || !searchQuery) return res.json({ ok: true });
   try {
     const db = await connectDB();
+    
+    // Fetch user to properly sync the counter for existing users
+    const user = await db.collection("users").findOne({ username }, { projection: { history: 1, totalSearches: 1 } });
+    const currentTotal = Math.max(user?.totalSearches || 0, user?.history?.length || 0);
+
     await db.collection("users").updateOne(
       { username },
       {
@@ -695,7 +700,7 @@ router.post("/history", async (req, res) => {
             $slice: -500,
           },
         },
-        $inc: { totalSearches: 1 }
+        $set: { totalSearches: currentTotal + 1 }
       },
       { upsert: true },
     );
