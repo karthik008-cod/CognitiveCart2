@@ -41,6 +41,6 @@ app.use("/api", require("./api"));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🔥 Cogni Cart backend running on port ${PORT}`);
+  console.log(`🔥 CogniCart backend running on port ${PORT}`);
   console.log(`👉 Open http://localhost:${PORT} in your browser!`);
 });

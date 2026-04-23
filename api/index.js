@@ -112,9 +112,9 @@ router.post("/send-otp", async (req, res) => {
 
   try {
     await emailApi.sendTransacEmail({
-      sender: { email: "aakasltf06@gmail.com", name: "Cogni Cart" },
+      sender: { email: "aakasltf06@gmail.com", name: "CogniCart" },
       to: [{ email: username, name: username.split("@")[0] }],
-      subject: "🔐 Your Cogni Cart Verification Code",
+      subject: "🔐 Your CogniCart Verification Code",
       htmlContent: `
 <!DOCTYPE html>
 <html>
@@ -126,13 +126,13 @@ router.post("/send-otp", async (req, res) => {
         <!-- Header -->
         <tr><td style="background:linear-gradient(135deg,#4f46e5,#7c3aed);padding:32px 40px;text-align:center">
           <div style="font-size:2.5rem;margin-bottom:8px">🛒</div>
-          <h1 style="margin:0;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:-0.5px">Cogni Cart</h1>
+          <h1 style="margin:0;color:#fff;font-size:1.5rem;font-weight:800;letter-spacing:-0.5px">CogniCart</h1>
           <p style="margin:6px 0 0;color:rgba(255,255,255,0.8);font-size:0.88rem">Smart Price Comparison</p>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:40px">
           <h2 style="margin:0 0 12px;color:#f1f5f9;font-size:1.25rem;font-weight:700">Verify Your Email 🔐</h2>
-          <p style="margin:0 0 28px;color:#94a3b8;font-size:0.9rem;line-height:1.6">Hi <strong style="color:#c7d2fe">${username.split('@')[0]}</strong>! Enter this one-time code to log in to your Cogni Cart account:</p>
+          <p style="margin:0 0 28px;color:#94a3b8;font-size:0.9rem;line-height:1.6">Hi <strong style="color:#c7d2fe">${username.split('@')[0]}</strong>! Enter this one-time code to log in to your CogniCart account:</p>
           <!-- OTP Box -->
           <div style="background:rgba(99,102,241,0.1);border:2px solid rgba(99,102,241,0.4);border-radius:16px;padding:28px;text-align:center;margin-bottom:28px">
             <p style="margin:0 0 8px;color:#94a3b8;font-size:0.75rem;text-transform:uppercase;letter-spacing:1px">Your Verification Code</p>
@@ -146,7 +146,7 @@ router.post("/send-otp", async (req, res) => {
         </td></tr>
         <!-- Footer -->
         <tr><td style="padding:20px 40px 32px;border-top:1px solid rgba(255,255,255,0.06)">
-          <p style="margin:0;color:#475569;font-size:0.75rem;text-align:center">© Cogni Cart · Sent at ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</p>
+          <p style="margin:0;color:#475569;font-size:0.75rem;text-align:center">© CogniCart · Sent at ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})}</p>
         </td></tr>
       </table>
     </td></tr>
@@ -585,6 +585,34 @@ router.post("/place-order", async (req, res) => {
   }
 });
 
+router.post("/place-order-multi", async (req, res) => {
+  const { username, orderItems } = req.body;
+  try {
+    const db = await connectDB();
+    const user = await db
+      .collection("users")
+      .findOne({ username }, { projection: { cart: 1 } });
+    if (!user || !user.cart?.length) return res.json({ message: "Cart empty" });
+
+    // orderItems already has grouped items with qty and paymentMethod
+    const newOrder = {
+      items: orderItems,
+      orderDate: new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }),
+    };
+
+    await db
+      .collection("users")
+      .updateOne(
+        { username },
+        { $push: { orders: newOrder }, $set: { cart: [] } },
+      );
+    res.json({ message: "Order placed successfully! 🎉" });
+  } catch (err) {
+    console.error("Place order multi error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Remove a single item from cart by index
 router.delete("/cart/:username/:index", async (req, res) => {
   const { username, index } = req.params;
@@ -741,7 +769,7 @@ router.post("/ai-recommendation", async (req, res) => {
   }
 
   const prompt =
-    `You are a smart shopping AI for 'Cogni Cart', an Indian price-comparison app. ` +
+    `You are a smart shopping AI for 'CogniCart', an Indian price-comparison app. ` +
     userPreferenceGuidance +
     platformGuidance +
     `Analyze these products and recommend the single best option: ${JSON.stringify(productSummary)}. ` +
@@ -828,7 +856,7 @@ router.post("/chatbot", async (req, res) => {
         .join("\n");
 
       searchResultsContext =
-        `\n[CURRENT SEARCH CONTEXT]: The user has just searched for "${searchContext.query}" on Cogni Cart. ` +
+        `\n[CURRENT SEARCH CONTEXT]: The user has just searched for "${searchContext.query}" on CogniCart. ` +
         `Here are the actual search results currently shown on screen:\n${productList}\n` +
         `CRITICAL RULES FOR SEARCH RESULTS:\n` +
         `- If the user asks to recommend the best, pick the top choice based on price/rating/store balance and explain why clearly.\n` +
@@ -839,13 +867,12 @@ router.post("/chatbot", async (req, res) => {
     }
 
     const prompt =
-      `You are 'Cogni Bot', the intelligent AI shopping assistant for Cogni Cart — India's smartest price comparison app. ` +
-      `Your personality: sharp, helpful, enthusiastic about saving money, and data-driven. ` +
-      `You specialize in: analyzing live search results shown on Cogni Cart, finding the best deals between Amazon, Flipkart, Meesho, Myntra, and other Indian platforms; explaining price trends; helping users decide what to buy. ` +
+      `You are 'CogniBot', the intelligent AI shopping assistant for CogniCart — India's smartest price comparison app. ` +
+      `You specialize in: analyzing live search results shown on CogniCart, finding the best deals between Amazon, Flipkart, Meesho, Myntra, and other Indian platforms; explaining price trends; helping users decide what to buy. ` +
       `Guidelines: Keep replies to 2-4 sentences. Use natural Indian English (use ₹ signs for prices). ` +
       `Use emojis sparingly (1-2 per reply). Be specific — always mention product names and prices when relevant. ` +
       `If asked about platform comparisons: Amazon is best for electronics & branded goods, Flipkart is great for phones & appliances, Meesho/Myntra excel at fashion & ethnic wear. ` +
-      `Never say you are an AI language model — you ARE Cogni Bot. Never mention OpenAI, Meta, Groq, or Llama. ` +
+      `Never say you are an AI language model — you ARE CogniBot. Never mention OpenAI, Meta, Groq, or Llama. ` +
       searchResultsContext +
       userContext +
       `\nUser message: "${message.trim()}"`;
@@ -1051,11 +1078,11 @@ async function sendPriceDropEmail(username, product, priceDetails) {
       <div style="text-align:center;margin-bottom:28px">
         <a href="https://cognitive-cart2.vercel.app/watchlist.html" style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#fff;padding:15px 36px;border-radius:12px;text-decoration:none;font-weight:800;font-size:1rem;box-shadow:0 8px 24px rgba(5,150,105,0.4)">View Watchlist →</a>
       </div>
-      <p style="margin:0;color:#4b5563;font-size:0.8rem;text-align:center">You're receiving this because you added this product to your Cogni Cart watchlist.</p>
+      <p style="margin:0;color:#4b5563;font-size:0.8rem;text-align:center">You're receiving this because you added this product to your CogniCart watchlist.</p>
     </td></tr>
     <!-- Footer -->
     <tr><td style="padding:16px 40px 28px;border-top:1px solid rgba(255,255,255,0.05)">
-      <p style="margin:0;color:#374151;font-size:0.72rem;text-align:center">© Cogni Cart · ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</p>
+      <p style="margin:0;color:#374151;font-size:0.72rem;text-align:center">© CogniCart · ${new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'})} IST</p>
     </td></tr>
   </table>
   </td></tr>
@@ -1065,7 +1092,7 @@ async function sendPriceDropEmail(username, product, priceDetails) {
     `;
 
     await emailApi.sendTransacEmail({
-      sender: { email: "aakasltf06@gmail.com", name: "Cogni Cart" },
+      sender: { email: "aakasltf06@gmail.com", name: "CogniCart" },
       to: [{ email: username, name: username.split("@")[0] }],
       subject: `🎉 Price Drop Alert: ${Math.round(priceDetails.dropPercentage)}% OFF on "${product.title.substring(0, 40)}"`,
       htmlContent,

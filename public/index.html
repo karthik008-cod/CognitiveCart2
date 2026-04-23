@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Cogni Cart</title>
+    <title>CogniCart</title>
     <link rel="icon" href="data:," />
     <link rel="stylesheet" href="style.css" />
     <style>
@@ -108,7 +108,7 @@
     <div id="toast-container"></div>
 
     <div class="top-bar">
-      <h2 onclick="goHome()" style="cursor:pointer">🛒 Cogni Cart</h2>
+      <h2 onclick="goHome()" style="cursor:pointer">🛒 CogniCart</h2>
       <div class="user-controls" id="userControls">
         <button onclick="openAuthModal(false)">Login / Sign Up</button>
       </div>
@@ -190,82 +190,33 @@
           <span style="font-size:1.25rem;font-weight:700;color:var(--primary)">₹—</span>
         </div>
 
-        <!-- Step 1: Choose method -->
+        <!-- Payment Methods Selection -->
         <div id="payStep1">
-          <p style="font-size:0.85rem;color:var(--text-muted);margin-bottom:12px;text-align:left">Choose payment method</p>
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px">
-            <div class="pay-method-tile" id="tile-upi" onclick="selectPayMethod('UPI')">
-              <span style="font-size:1.6rem">📱</span>
-              <span>UPI</span>
-            </div>
-            <div class="pay-method-tile" id="tile-card" onclick="selectPayMethod('Card')">
-              <span style="font-size:1.6rem">💳</span>
-              <span>Card</span>
-            </div>
-            <div class="pay-method-tile" id="tile-cod" onclick="selectPayMethod('COD')">
-              <span style="font-size:1.6rem">🏠</span>
-              <span>COD</span>
-            </div>
+          <div style="margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; background: rgba(124,109,247,0.1); padding: 12px; border-radius: 12px; border: 1px solid rgba(124,109,247,0.2);">
+            <span style="font-size:0.9rem; font-weight:600; color:var(--text-main);">Apply to all items:</span>
+            <select id="globalPayMethod" onchange="applyGlobalPayMethod(this.value)" style="padding: 6px 12px; font-size: 0.85rem; border-radius: 8px; border: 1px solid var(--primary); background: var(--glass-bg); color: var(--text-main); outline: none;">
+              <option value="">Select Method...</option>
+              <option value="UPI">📱 UPI</option>
+              <option value="Card">💳 Card</option>
+              <option value="COD">🏠 Cash on Delivery</option>
+            </select>
           </div>
-        </div>
 
-        <!-- Step 2a: UPI details -->
-        <div id="payFormUPI" style="display:none">
-          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">UPI ID</label>
-          <input id="upiId" type="text" placeholder="yourname@upi" style="width:100%;margin-bottom:12px"/>
-          <p style="font-size:0.78rem;color:var(--text-muted);text-align:left;margin-bottom:14px">Popular: GPay, PhonePe, Paytm, BHIM</p>
-          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@oksbi'">🟢 GPay</span>
-            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@ybl'">📲 PhonePe</span>
-            <span class="upi-app-chip" onclick="document.getElementById('upiId').value='yourname@paytm'">💠 Paytm</span>
+          <div id="payItemList" style="max-height: 280px; overflow-y: auto; margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; padding-right: 5px;">
+            <!-- Render items here -->
           </div>
-          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Pay Now 🔒</button>
-          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
-        </div>
 
-        <!-- Step 2b: Card details -->
-        <div id="payFormCard" style="display:none">
-          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Card Number</label>
-          <input id="cardNum" type="text" placeholder="1234 5678 9012 3456" maxlength="19" oninput="fmtCardNum(this)" style="width:100%;margin-bottom:10px;letter-spacing:2px"/>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
-            <div>
-              <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Expiry</label>
-              <input id="cardExpiry" type="text" placeholder="MM / YY" maxlength="7" oninput="fmtExpiry(this)" style="width:100%"/>
-            </div>
-            <div>
-              <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">CVV</label>
-              <input id="cardCVV" type="password" placeholder="•••" maxlength="3" style="width:100%"/>
-            </div>
-          </div>
-          <label style="display:block;text-align:left;font-size:0.82rem;color:var(--text-muted);margin-bottom:6px">Name on Card</label>
-          <input id="cardName" type="text" placeholder="Full name" style="width:100%;margin-bottom:14px"/>
-          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Pay Now 🔒</button>
-          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
-        </div>
-
-        <!-- Step 2c: COD -->
-        <div id="payFormCOD" style="display:none">
-          <div style="background:rgba(52,211,153,0.07);border:1px solid rgba(52,211,153,0.2);border-radius:14px;padding:18px;text-align:center;margin-bottom:16px">
-            <div style="font-size:2.5rem;margin-bottom:8px">🏠</div>
-            <h4 style="color:var(--success);margin-bottom:6px;font-size:1rem">Cash on Delivery</h4>
-            <p style="color:var(--text-muted);font-size:0.85rem">Pay in cash when your order arrives. No extra charges.</p>
-          </div>
-          <div style="background:var(--glass-bg);border-radius:12px;padding:14px;margin-bottom:16px;text-align:left">
-            <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:4px">📦 Estimated delivery: <strong style="color:var(--text-main)">3–5 business days</strong></p>
-            <p style="font-size:0.82rem;color:var(--text-muted)">✅ Keep exact change ready at the time of delivery</p>
-          </div>
-          <button class="glow-btn" onclick="confirmPayment()" style="width:100%;padding:13px">Confirm COD Order</button>
-          <button onclick="backToPayStep1()" style="width:100%;margin-top:8px;background:transparent;border:1px solid var(--glass-border);color:var(--text-muted)">← Change Method</button>
+          <button id="multiPlaceOrderBtn" class="glow-btn" onclick="confirmMultiPayment()" style="width:100%;padding:14px;font-size:1.05rem;">Place Order 🔒</button>
         </div>
 
       </div>
     </div>
 
-    <div id="chatToggle" title="Chat with Cogni Bot">🤖</div>
+    <div id="chatToggle" title="Chat with CogniBot">🤖</div>
     <div id="chatBox" class="chat-hidden">
       <div class="chat-resize-handle" id="chatResizeHandle" title="Drag to resize"></div>
       <div class="chat-header">
-        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> Cogni Bot</span>
+        <span style="display:flex;align-items:center;gap:8px"><span style="font-size:1.1rem">🤖</span> CogniBot</span>
         <span class="close-btn" id="closeChat">✖</span>
       </div>
       <div id="chatMessages" class="chat-messages"></div>
@@ -276,7 +227,7 @@
         <button onclick="injectSuggestion('Tip to save money shopping online')" style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.25);color:#a5b4fc;border-radius:20px;padding:5px 12px;font-size:0.75rem;cursor:pointer;transition:0.2s" onmouseover="this.style.background='rgba(99,102,241,0.2)'" onmouseout="this.style.background='rgba(99,102,241,0.1)'">💡 Savings tip</button>
       </div>
       <div class="chat-input">
-        <input id="chatInput" placeholder="Ask Cogni Bot…" />
+        <input id="chatInput" placeholder="Ask CogniBot…" />
         <button id="voiceBtn" title="Voice Input">🎙</button>
         <button id="sendBtn">Send</button>
       </div>
@@ -535,7 +486,7 @@
         const highlight  = highlightItem && highlightItem.title === p.title;
         const productData = encodeURIComponent(JSON.stringify({
           title: p.title, price: p.price, image: p.image,
-          rating: p.rating
+          rating: p.rating, link: p.link || "#", store: p.store || ""
         }));
         const storeName = p.store || (id === "amazon" ? "Amazon" : id === "flipkart" ? "Flipkart" : "Store");
         const storeLink = p.link || "#";
@@ -958,6 +909,7 @@
         else map[key] = { ...p, qty: 1, indices: [i] };
       });
       const items = Object.values(map);
+      window.currentCartItems = items;
 
       cartBody.innerHTML = items.map((p, i) => `
         <div class="reveal" style="display:flex;gap:15px;align-items:center;background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:16px;padding:16px;transition:0.2s">
@@ -1027,103 +979,83 @@
     }
 
     // ─── PAYMENT METHOD SELECTION ────────────────────────────────────────────
-    let _selectedPayMethod = "";
-
     function openPaymentModal() {
-      // Compute current cart total for display
-      const username = localStorage.getItem("loggedUser");
-      fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`)
-        .then(r => r.json())
-        .then(cart => {
-          const subtotal = cart.reduce((s, p) => s + parseInt(p.price || 0), 0);
-          const total = subtotal;
-          const el = document.getElementById("payOrderTotal");
-          if (el) el.querySelector("span:last-child").textContent = "₹" + total.toLocaleString("en-IN");
-        }).catch(() => {});
+      const items = window.currentCartItems || [];
+      if (!items.length) {
+        toast("Your cart is empty", "error");
+        return;
+      }
 
-      // Reset to step 1
-      backToPayStep1();
+      // Compute current cart total for display
+      const total = items.reduce((s, p) => s + (parseInt(p.price || 0) * p.qty), 0);
+      const el = document.getElementById("payOrderTotal");
+      if (el) el.querySelector("span:last-child").textContent = "₹" + total.toLocaleString("en-IN");
+
+      // Render items list
+      const payItemList = document.getElementById("payItemList");
+      payItemList.innerHTML = items.map((p, i) => `
+        <div style="display:flex; justify-content:space-between; align-items:center; background:var(--glass-bg); padding:10px 14px; border-radius:12px; border:1px solid var(--glass-border);">
+          <div style="flex:1; min-width:0; margin-right:12px; text-align:left;">
+            <p style="font-size:0.9rem; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-main); margin-bottom:4px;">${p.title}</p>
+            <p style="font-size:0.8rem; color:var(--text-muted)">Qty: <strong style="color:var(--text-main)">${p.qty}</strong> <span style="margin:0 6px">•</span> <strong style="color:var(--success)">₹${(parseInt(p.price) * p.qty).toLocaleString('en-IN')}</strong></p>
+          </div>
+          <select class="item-pay-method" data-index="${i}" style="width:130px; padding:6px 8px; font-size:0.85rem; border-radius:8px; background:rgba(0,0,0,0.2); border:1px solid var(--glass-border); color:var(--text-main); outline:none; cursor:pointer;">
+            <option value="UPI">📱 UPI</option>
+            <option value="Card">💳 Card</option>
+            <option value="COD">🏠 COD</option>
+          </select>
+        </div>
+      `).join("");
+
+      document.getElementById("globalPayMethod").value = "";
       document.getElementById("paymentModal").style.display = "flex";
     }
 
-    function selectPayMethod(method) {
-      _selectedPayMethod = method;
-      // Highlight selected tile
-      ["tile-upi","tile-card","tile-cod"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove("pay-method-tile--active");
+    function applyGlobalPayMethod(val) {
+      if (!val) return;
+      document.querySelectorAll(".item-pay-method").forEach(sel => {
+        sel.value = val;
       });
-      const tileMap = { UPI: "tile-upi", Card: "tile-card", COD: "tile-cod" };
-      const activeTile = document.getElementById(tileMap[method]);
-      if (activeTile) activeTile.classList.add("pay-method-tile--active");
-
-      // Show corresponding form
-      document.getElementById("payFormUPI").style.display  = method === "UPI"  ? "block" : "none";
-      document.getElementById("payFormCard").style.display = method === "Card" ? "block" : "none";
-      document.getElementById("payFormCOD").style.display  = method === "COD"  ? "block" : "none";
     }
 
-    function backToPayStep1() {
-      _selectedPayMethod = "";
-      ["payFormUPI","payFormCard","payFormCOD"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.style.display = "none";
+    async function confirmMultiPayment() {
+      const items = window.currentCartItems || [];
+      const selects = document.querySelectorAll(".item-pay-method");
+      
+      const orderItems = items.map((p, i) => {
+        return {
+          ...p,
+          paymentMethod: selects[i].value
+        };
       });
-      ["tile-upi","tile-card","tile-cod"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.classList.remove("pay-method-tile--active");
+
+      // Open product links immediately to bypass browser popup blockers
+      orderItems.forEach(p => {
+        if (p.link && p.link !== "#") {
+          window.open(p.link, "_blank");
+        }
       });
-      document.getElementById("payStep1").style.display = "block";
-    }
 
-    // Card number formatter
-    function fmtCardNum(el) {
-      let v = el.value.replace(/\D/g, "").substring(0,16);
-      el.value = v.match(/.{1,4}/g)?.join(" ") || v;
-    }
-    function fmtExpiry(el) {
-      let v = el.value.replace(/\D/g, "").substring(0,4);
-      if (v.length >= 3) v = v.slice(0,2) + " / " + v.slice(2);
-      el.value = v;
-    }
-
-    async function confirmPayment() {
-      if (!_selectedPayMethod) { toast("Select a payment method", "error"); return; }
-
-      // Validate inputs per method
-      if (_selectedPayMethod === "UPI") {
-        const upi = document.getElementById("upiId")?.value.trim();
-        if (!upi || !upi.includes("@")) { toast("Enter a valid UPI ID (e.g. name@upi)", "error"); return; }
-      }
-      if (_selectedPayMethod === "Card") {
-        const num = document.getElementById("cardNum")?.value.replace(/\s/g,"");
-        const exp = document.getElementById("cardExpiry")?.value;
-        const cvv = document.getElementById("cardCVV")?.value;
-        const nm  = document.getElementById("cardName")?.value.trim();
-        if (!num || num.length < 16) { toast("Enter a valid 16-digit card number", "error"); return; }
-        if (!exp || exp.length < 7)  { toast("Enter a valid expiry date", "error"); return; }
-        if (!cvv || cvv.length < 3)  { toast("Enter a valid 3-digit CVV", "error"); return; }
-        if (!nm)                      { toast("Enter the name on card", "error"); return; }
-      }
-
-      // Optimistic UI — show processing
-      const payBtn = document.querySelector(`#payForm${_selectedPayMethod} .glow-btn`);
+      const payBtn = document.getElementById("multiPlaceOrderBtn");
       if (payBtn) { payBtn.disabled = true; payBtn.textContent = "Processing…"; }
 
       try {
         const username = localStorage.getItem("loggedUser");
-        const res      = await fetch(`${API_BASE}/place-order`, {
+        const res = await fetch(`${API_BASE}/place-order-multi`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
-          body:    JSON.stringify({ username, paymentMethod: _selectedPayMethod }),
+          body:    JSON.stringify({ username, orderItems }),
         });
         const data = await res.json();
         closeModal("paymentModal");
         toast("🎉 " + (data.message || "Order placed successfully!"), "success", 5000);
+
+        // Clear local cart items to reflect backend clear
+        window.currentCartItems = [];
         showSection("orders");
       } catch {
         toast("Payment failed. Please try again.", "error");
-        if (payBtn) { payBtn.disabled = false; payBtn.textContent = "Pay Now 🔒"; }
+        if (payBtn) { payBtn.disabled = false; payBtn.textContent = "Place Order 🔒"; }
       }
     }
 
@@ -1148,7 +1080,7 @@
 
       let html = `<div style="max-width:900px;margin:0 auto;padding:20px"><h3 style="font-size:1.6rem;margin-bottom:25px">📦 My Orders</h3>`;
       [...orders].reverse().forEach((order, index) => {
-        const orderTotal = (order.items || []).reduce((s, p) => s + parseInt(p.price || 0), 0);
+        const orderTotal = (order.items || []).reduce((s, p) => s + (parseInt(p.price || 0) * (p.qty || 1)), 0);
         html += `
           <div class="order-group reveal" style="background:var(--glass-bg);border:1px solid var(--glass-border);border-radius:20px;padding:20px;margin-bottom:20px">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:15px;flex-wrap:wrap;gap:10px">
@@ -1157,7 +1089,6 @@
                 <small style="color:var(--text-muted)">${order.orderDate || 'N/A'}</small>
               </div>
               <div style="text-align:right">
-                <div style="font-size:0.8rem;color:var(--text-muted)">Payment: <strong style="color:var(--text-main)">${order.paymentMethod || 'Unknown'}</strong></div>
                 <div style="color:var(--primary-light);font-weight:700">Total: ₹${orderTotal.toLocaleString('en-IN')}</div>
               </div>
             </div>
@@ -1169,9 +1100,12 @@
                 <img src="${p.image}" alt="" style="width:55px;height:55px;object-fit:cover;border-radius:10px;flex-shrink:0">
                 <div style="flex:1;min-width:0">
                   <p style="font-weight:500;font-size:0.9rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${p.title}</p>
-                  <p style="color:var(--primary-light);font-weight:700">₹${parseInt(p.price).toLocaleString('en-IN')}</p>
+                  <p style="color:var(--primary-light);font-weight:700;margin-top:4px;">₹${parseInt(p.price).toLocaleString('en-IN')} <span style="font-size:0.8rem;color:var(--text-muted);font-weight:normal;margin-left:8px;">${p.qty > 1 ? `(Qty: ${p.qty})` : ''}</span></p>
                 </div>
-                <span style="background:rgba(16,185,129,0.1);color:var(--success);border:1px solid rgba(16,185,129,0.2);border-radius:8px;padding:4px 10px;font-size:0.75rem;white-space:nowrap">✅ Delivered</span>
+                <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">
+                  <span style="font-size:0.75rem;color:var(--primary);background:rgba(124,109,247,0.1);border:1px solid rgba(124,109,247,0.2);border-radius:6px;padding:2px 8px;">💳 ${p.paymentMethod || order.paymentMethod || 'Unknown'}</span>
+                  <span style="background:rgba(16,185,129,0.1);color:var(--success);border:1px solid rgba(16,185,129,0.2);border-radius:6px;padding:2px 8px;font-size:0.75rem;white-space:nowrap">✅ Delivered</span>
+                </div>
               </div>`;
         });
         html += `</div></div>`;
@@ -1337,7 +1271,7 @@
         chatToggle.style.transform = "scale(0)";
         // Show welcome message once
         if (!messagesDiv.children.length) {
-          addMessage("bot", "👋 Hey! I'm **Cogni Bot**, your intelligent shopping assistant. I can analyze the search results on screen, recommend the best deal, compare platforms, and answer your shopping questions!");
+          addMessage("bot", "👋 Hey! I'm **CogniBot**, your intelligent shopping assistant. I can analyze the search results on screen, recommend the best deal, compare platforms, and answer your shopping questions!");
         }
       });
       closeBtn.addEventListener("click", () => {
