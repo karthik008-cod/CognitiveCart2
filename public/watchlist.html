@@ -165,13 +165,29 @@
 
     <div id="loadingState"><div class="spinner"></div><p>Loading your watchlist…</p></div>
     <div id="statsContainer" class="stats" style="display:none"></div>
-    <div id="watchlistContainer" class="watchlist-grid"></div>
+    <div id="folderBar" style="display:none; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:20px;"></div>
+    <div id="folderGrid" class="watchlist-grid"></div>
     <div id="emptyState" class="empty-state">
         <div class="empty-emoji">👀</div>
         <h3>Nothing on Watch Yet</h3>
         <p>Search for products and click "Watch Price" to start tracking drops and get email alerts.</p>
         <a href="index.html" class="btn-primary">🔍 Find Products to Watch</a>
     </div>
+</div>
+
+<!-- New Folder Modal -->
+<div id="folderModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid rgba(99,102,241,0.3); border-radius:24px; padding:36px 32px; max-width:380px; width:90%; box-shadow:0 32px 80px rgba(0,0,0,0.6); animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);">
+    <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">📁</div>
+    <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Create New Folder</h3>
+    <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-bottom:22px;">Group your watchlist items by category or project.</p>
+    <input id="folderNameInput" type="text" placeholder="e.g. Birthday Gifts, Home Setup…"
+      style="width:100%; padding:12px 16px; border-radius:12px; border:1px solid rgba(99,102,241,0.4); background:rgba(99,102,241,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;">
+    <div style="display:flex; gap:10px;">
+      <button onclick="closeFolderModal()" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
+      <button onclick="confirmCreateFolder()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Create</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -246,45 +262,84 @@
                 <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
                 <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
 
-            // ── Smart Wishlist Folders ────────────────────────────────────────
-            // Group by folder (default: "My Wishlist")
+            // ── Smart Wishlist Folders
             const folders = {};
             watchlist.forEach(item => {
                 const folder = item.folder || "My Wishlist";
                 if (!folders[folder]) folders[folder] = [];
                 folders[folder].push(item);
             });
-
-            const folderKeys = Object.keys(folders);
-            let folderHtml = `
-              <div style="display:flex; align-items:center; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
-                <span style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">📁 FOLDERS:</span>
-                ${folderKeys.map((f, i) => `
-                  <button onclick="filterFolder('${f}', this)" class="folder-tab${i===0?' active':''}" 
-                    style="background:${i===0?'var(--primary)':'rgba(255,255,255,0.05)'}; border:1px solid ${i===0?'var(--primary)':'var(--glass-border)'}; color:${i===0?'white':'var(--text-muted)'}; border-radius:20px; padding:5px 14px; font-size:0.82rem; cursor:pointer; transition:0.2s;">
-                    ${f} (${folders[f].length})
-                  </button>`).join("")}
-                <button onclick="createFolder()" style="background:rgba(99,102,241,0.1); border:1px dashed rgba(99,102,241,0.4); color:#a5b4fc; border-radius:20px; padding:5px 14px; font-size:0.82rem; cursor:pointer;">+ New Folder</button>
-              </div>`;
-
-            document.getElementById("watchlistContainer").innerHTML = folderHtml +
-              `<div id="folderContent">${folders[folderKeys[0]].map(item => createCard(item)).join("")}</div>`;
-
-            // Store for folder switching
             window._watchlistFolders = folders;
+            window._activeFolder = Object.keys(folders)[0];
 
-
-            // Charts + buttons
-            watchlist.forEach(item => {
-                renderChart(item);
-                document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
-            });
+            renderFolderBar();
+            renderFolderGrid(window._activeFolder);
 
         } catch (err) {
             document.getElementById("loadingState").style.display = "none";
             toast("Failed to load watchlist: " + err.message, "error", 5000);
             document.getElementById("emptyState").style.display = "block";
         }
+    }
+
+    function renderFolderBar() {
+        const folders = window._watchlistFolders;
+        const active  = window._activeFolder;
+        const bar = document.getElementById("folderBar");
+        bar.style.display = "flex";
+        bar.innerHTML = `<span style="font-weight:600;color:var(--text-muted);font-size:0.82rem;white-space:nowrap">📁 FOLDERS:</span>`
+          + Object.keys(folders).map(f => `
+            <button onclick="switchFolder('${f}',this)" style="border-radius:20px;padding:6px 16px;font-size:0.82rem;cursor:pointer;font-weight:600;transition:0.2s;
+              background:${f===active?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(255,255,255,0.05)'};
+              border:1px solid ${f===active?'transparent':'rgba(255,255,255,0.1)'};
+              color:${f===active?'#fff':'var(--text-muted)'}">
+              ${f} <span style="font-size:0.75rem;opacity:0.7">(${folders[f].length})</span>
+            </button>`).join("")
+          + `<button onclick="openFolderModal()" style="border-radius:20px;padding:6px 16px;font-size:0.82rem;cursor:pointer;font-weight:600;background:rgba(99,102,241,0.1);border:1px dashed rgba(99,102,241,0.4);color:#a5b4fc;">+ New Folder</button>`;
+    }
+
+    function renderFolderGrid(folderName) {
+        const items = (window._watchlistFolders || {})[folderName] || [];
+        const grid = document.getElementById("folderGrid");
+        grid.innerHTML = items.map(item => createCard(item)).join("");
+        // attach remove buttons + render charts
+        items.forEach(item => {
+            renderChart(item);
+            document.getElementById(`remove-${item._id}`)?.addEventListener("click", () => showConfirm(() => removeItem(item._id)));
+        });
+    }
+
+    function switchFolder(name, btn) {
+        window._activeFolder = name;
+        renderFolderBar();
+        renderFolderGrid(name);
+    }
+
+    function openFolderModal() {
+        const m = document.getElementById("folderModal");
+        m.style.display = "flex";
+        const inp = document.getElementById("folderNameInput");
+        inp.value = "";
+        setTimeout(() => inp.focus(), 80);
+        inp.onkeydown = e => { if (e.key === "Enter") confirmCreateFolder(); };
+    }
+
+    function closeFolderModal() {
+        document.getElementById("folderModal").style.display = "none";
+    }
+
+    function confirmCreateFolder() {
+        const name = document.getElementById("folderNameInput").value.trim();
+        if (!name) { toast("Please enter a folder name.", "error"); return; }
+        const folders = window._watchlistFolders || {};
+        if (folders[name]) { toast("A folder with this name already exists!", "error"); return; }
+        folders[name] = [];
+        window._watchlistFolders = folders;
+        window._activeFolder = name;
+        renderFolderBar();
+        renderFolderGrid(name);
+        closeFolderModal();
+        toast(`📁 Folder "${name}" created! Items added to watchlist will be assignable to it.`, "success");
     }
 
     function createCard(item) {
@@ -383,33 +438,11 @@
     }
 
     function filterFolder(folderName, btn) {
-        const folders = window._watchlistFolders;
-        if (!folders || !folders[folderName]) return;
-        document.getElementById("folderContent").innerHTML = folders[folderName].map(item => createCard(item)).join("");
-        // Update active tab styling
-        document.querySelectorAll(".folder-tab").forEach(b => {
-            b.style.background = "rgba(255,255,255,0.05)";
-            b.style.borderColor = "var(--glass-border)";
-            b.style.color = "var(--text-muted)";
-        });
-        if (btn) {
-            btn.style.background = "var(--primary)";
-            btn.style.borderColor = "var(--primary)";
-            btn.style.color = "white";
-        }
-        // Re-render charts for the new cards
-        setTimeout(() => {
-            const folders2 = window._watchlistFolders[folderName];
-            if (folders2) folders2.forEach(item => { if (item.priceHistory?.length > 1) drawChart(item); });
-        }, 50);
+        switchFolder(folderName, btn);
     }
 
     function createFolder() {
-        const name = prompt("Enter a name for the new folder (e.g. 'Birthday Gifts', 'Bedroom Setup'):");
-        if (!name || !name.trim()) return;
-        const folders = window._watchlistFolders || {};
-        if (folders[name.trim()]) { alert("A folder with this name already exists!"); return; }
-        toast(`📁 Folder "${name.trim()}" created! Move items here when adding to watchlist.`, "success");
+        openFolderModal();
     }
 
     document.getElementById("logoutBtn").addEventListener("click", e => {
