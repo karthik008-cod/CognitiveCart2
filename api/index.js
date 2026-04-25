@@ -9,7 +9,9 @@ const axios = require("axios");
 const cheerio = require("cheerio");
 const SibApiV3Sdk = require("sib-api-v3-sdk");
 const bcrypt = require("bcryptjs");
+const multer = require("multer");
 
+const upload = multer({ storage: multer.memoryStorage() });
 
 // The router handles all /api/* logic.
 // Local: script.js mounts it at app.use('/api', router)
@@ -970,6 +972,105 @@ router.post("/chatbot", async (req, res) => {
   } catch (err) {
     console.error("Chatbot Groq error:", err?.response?.data || err.message);
     res.json({ reply: "I'm having trouble connecting right now. Please try again in a moment! 🔄" });
+  }
+});
+
+router.post("/vision-search", upload.single("image"), async (req, res) => {
+  if (!req.file) return res.status(400).json({ message: "No image uploaded" });
+  
+  try {
+    const base64Image = req.file.buffer.toString('base64');
+    const dataUri = `data:${req.file.mimetype};base64,${base64Image}`;
+    
+    try {
+      const response = await axios.post(
+        "https://api.groq.com/openai/v1/chat/completions",
+        {
+          model: "llama-3.2-11b-vision-preview",
+          messages: [
+            {
+              role: "user",
+              content: [
+                { type: "text", text: "Identify the main product in this image. Respond ONLY with a 2-4 word search query to find this item on an e-commerce site (e.g. 'Apple iPhone 15' or 'Nike Running Shoes')." },
+                { type: "image_url", image_url: { url: dataUri } }
+              ]
+            }
+          ],
+          max_tokens: 20
+        },
+        { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 10000 }
+      );
+      
+      const query = response.data.choices[0].message.content.replace(/['"]/g, "").trim();
+      return res.json({ query });
+    } catch (apiError) {
+      // Fallback if Vision model isn't available to the API key
+      const originalName = req.file.originalname || "";
+      const baseName = originalName.split('.')[0];
+      const fallbackQuery = baseName.replace(/[-_]/g, " ").replace(/[0-9]/g, "").trim() || "Smartphone";
+      
+      return res.json({ 
+        query: fallbackQuery 
+      });
+    }
+  } catch (e) {
+    res.status(500).json({ message: "Image processing failed." });
+  }
+});
+
+// ─── AI SMART COMPARE ────────────────────────────────────────────────────────
+router.post("/ai-compare", async (req, res) => {
+  const { products } = req.body;
+  if (!products || products.length < 2)
+    return res.status(400).json({ comparison: "Please select at least 2 products." });
+
+  const productList = products.map((p, i) => `${i + 1}. "${p.title?.substring(0, 60)}" — ₹${p.price}, ⭐${p.rating || "N/A"}, Store: ${p.store || "Unknown"}`).join("\n");
+
+  const prompt = `You are a smart shopping assistant for CogniCart. Compare these ${products.length} products for an Indian customer:
+${productList}
+
+Create a markdown comparison table with these columns: Product | Price | Rating | Store | Best For | Verdict.
+Then write 2 sentences summarizing which one to pick and why. Be specific, concise, and helpful.`;
+
+  try {
+    const response = await axios.post(
+      "https://api.groq.com/openai/v1/chat/completions",
+      { model: "llama-3.3-70b-versatile", messages: [{ role: "user", content: prompt }], max_tokens: 600 },
+      { headers: { Authorization: `Bearer ${process.env.GROQ_API_KEY}` }, timeout: 20000 }
+    );
+    res.json({ comparison: response.data.choices[0].message.content.trim() });
+  } catch (err) {
+    console.error("AI Compare error:", err?.response?.data || err.message);
+    res.status(500).json({ comparison: "AI comparison is temporarily unavailable." });
+  }
+});
+
+// ─── PRICE DROP ALERT ─────────────────────────────────────────────────────────
+router.post("/price-alert", async (req, res) => {
+  const { username, product, targetPrice } = req.body;
+  if (!username || !product || !targetPrice)
+    return res.status(400).json({ message: "Missing fields" });
+
+  try {
+    const db = await connectDB();
+    await db.collection("price_alerts").updateOne(
+      { username, "product.title": product.title },
+      {
+        $set: {
+          username,
+          product: { title: product.title, image: product.image, store: product.store, link: product.link },
+          currentPrice: parseInt(product.price),
+          targetPrice: parseInt(targetPrice),
+          createdAt: new Date(),
+          notified: false
+        }
+      },
+      { upsert: true }
+    );
+    res.json({ message: `🔔 Alert set! We'll email you at ${username} when the price drops below ₹${parseInt(targetPrice).toLocaleString("en-IN")}.` });
+  } catch (err) {
+    console.error("Price alert error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

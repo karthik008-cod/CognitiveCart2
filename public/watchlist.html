@@ -246,8 +246,33 @@
                 <div class="stat-box green"><div class="stat-emoji">💰</div><div class="stat-value">${fc(totalSavings)}</div><div class="stat-label">Total Saved</div></div>
                 <div class="stat-box pink"><div class="stat-emoji">🛍️</div><div class="stat-value">${fc(totalValue)}</div><div class="stat-label">Portfolio Value</div></div>`;
 
-            // Render cards
-            document.getElementById("watchlistContainer").innerHTML = watchlist.map(item => createCard(item)).join("");
+            // ── Smart Wishlist Folders ────────────────────────────────────────
+            // Group by folder (default: "My Wishlist")
+            const folders = {};
+            watchlist.forEach(item => {
+                const folder = item.folder || "My Wishlist";
+                if (!folders[folder]) folders[folder] = [];
+                folders[folder].push(item);
+            });
+
+            const folderKeys = Object.keys(folders);
+            let folderHtml = `
+              <div style="display:flex; align-items:center; gap:10px; margin-bottom:24px; flex-wrap:wrap;">
+                <span style="font-weight:600; color:var(--text-muted); font-size:0.85rem;">📁 FOLDERS:</span>
+                ${folderKeys.map((f, i) => `
+                  <button onclick="filterFolder('${f}', this)" class="folder-tab${i===0?' active':''}" 
+                    style="background:${i===0?'var(--primary)':'rgba(255,255,255,0.05)'}; border:1px solid ${i===0?'var(--primary)':'var(--glass-border)'}; color:${i===0?'white':'var(--text-muted)'}; border-radius:20px; padding:5px 14px; font-size:0.82rem; cursor:pointer; transition:0.2s;">
+                    ${f} (${folders[f].length})
+                  </button>`).join("")}
+                <button onclick="createFolder()" style="background:rgba(99,102,241,0.1); border:1px dashed rgba(99,102,241,0.4); color:#a5b4fc; border-radius:20px; padding:5px 14px; font-size:0.82rem; cursor:pointer;">+ New Folder</button>
+              </div>`;
+
+            document.getElementById("watchlistContainer").innerHTML = folderHtml +
+              `<div id="folderContent">${folders[folderKeys[0]].map(item => createCard(item)).join("")}</div>`;
+
+            // Store for folder switching
+            window._watchlistFolders = folders;
+
 
             // Charts + buttons
             watchlist.forEach(item => {
@@ -355,6 +380,36 @@
         } catch (err) {
             toast("Failed to remove: " + err.message, "error");
         }
+    }
+
+    function filterFolder(folderName, btn) {
+        const folders = window._watchlistFolders;
+        if (!folders || !folders[folderName]) return;
+        document.getElementById("folderContent").innerHTML = folders[folderName].map(item => createCard(item)).join("");
+        // Update active tab styling
+        document.querySelectorAll(".folder-tab").forEach(b => {
+            b.style.background = "rgba(255,255,255,0.05)";
+            b.style.borderColor = "var(--glass-border)";
+            b.style.color = "var(--text-muted)";
+        });
+        if (btn) {
+            btn.style.background = "var(--primary)";
+            btn.style.borderColor = "var(--primary)";
+            btn.style.color = "white";
+        }
+        // Re-render charts for the new cards
+        setTimeout(() => {
+            const folders2 = window._watchlistFolders[folderName];
+            if (folders2) folders2.forEach(item => { if (item.priceHistory?.length > 1) drawChart(item); });
+        }, 50);
+    }
+
+    function createFolder() {
+        const name = prompt("Enter a name for the new folder (e.g. 'Birthday Gifts', 'Bedroom Setup'):");
+        if (!name || !name.trim()) return;
+        const folders = window._watchlistFolders || {};
+        if (folders[name.trim()]) { alert("A folder with this name already exists!"); return; }
+        toast(`📁 Folder "${name.trim()}" created! Move items here when adding to watchlist.`, "success");
     }
 
     document.getElementById("logoutBtn").addEventListener("click", e => {

@@ -116,8 +116,15 @@
 
     <div class="hero-search reveal active">
       <h1 id="heroTagline">Compare Instantly. Save Massively.</h1>
-      <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)"
-             onkeydown="handleSearchKey(event)" />
+      <div style="position: relative; width: 100%; max-width: 600px; margin: 0 auto; margin-bottom: 25px;">
+        <input id="item" placeholder="Search anything (fridge / iphone / apple fruit)"
+               onkeydown="handleSearchKey(event)" style="width: 100%; padding-right: 90px; margin-bottom: 0;" />
+        <div style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); display: flex; gap: 4px;">
+          <button onclick="startVoiceSearch()" title="Voice Search" style="background: none; border: none; font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--text-main);" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">🎤</button>
+          <label for="imageUpload" title="Image Search" style="font-size: 1.3rem; cursor: pointer; padding: 6px; transition: 0.2s; border-radius: 50%; display: flex; align-items: center; justify-content: center;" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='none'">📷</label>
+          <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="handleImageSearch(event)">
+        </div>
+      </div>
       <button type="button" onclick="search()" class="glow-btn">Compare Prices</button>
 
       <div class="preferences">
@@ -263,6 +270,40 @@
         </div>
 
         <button id="finishCheckoutBtn" class="glow-btn" onclick="finishAggregatorCheckout()" style="width:100%;padding:14px;font-size:1.05rem;">✅ Log as Purchased & Clear Cart</button>
+      </div>
+    </div>
+
+    <!-- AI Compare Modal -->
+    <div id="aiCompareModal" class="modal">
+      <div class="modal-content reveal-modal" style="max-width:820px; padding:32px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+          <h3 style="margin:0; font-size:1.5rem;">🧠 AI Smart-Compare</h3>
+          <span onclick="closeModal('aiCompareModal')" style="cursor:pointer; color:var(--text-muted); font-size:1.3rem; padding:4px 8px; border-radius:8px;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">✕</span>
+        </div>
+        <div id="aiCompareContent" style="max-height:65vh; overflow-y:auto; line-height:1.7; color:var(--text-main);">
+          <!-- Content goes here -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Compare Bar (fixed bottom) -->
+    <div id="compareBar" style="display:none; position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:linear-gradient(135deg, #1e1b4b, #111827); padding:14px 28px; border-radius:50px; border:1px solid var(--primary); box-shadow:0 10px 40px rgba(0,0,0,0.6); z-index:999; align-items:center; gap:18px; white-space:nowrap;">
+      <span id="compareCount" style="font-weight:600; color:var(--text-main); font-size:0.95rem;">0 items selected</span>
+      <button onclick="generateAICompare()" class="glow-btn" style="padding:9px 22px; font-size:0.9rem; border-radius:30px;">🧠 AI Compare</button>
+      <button onclick="clearCompare()" style="background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:0.85rem;" onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='var(--text-muted)'">✕ Clear</button>
+    </div>
+
+    <!-- Price Drop Alert Modal -->
+    <div id="priceAlertModal" class="modal">
+      <div class="modal-content reveal-modal" style="max-width:380px; padding:32px;">
+        <h3 style="margin-bottom:6px; font-size:1.3rem;">📈 Set Price Alert</h3>
+        <p style="color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">We'll email you when this product drops to your target price.</p>
+        <p id="priceAlertTitle" style="font-size:0.9rem; font-weight:600; color:var(--primary-light); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></p>
+        <p id="priceAlertCurrentPrice" style="font-size:0.85rem; color:var(--text-muted); margin-bottom:18px;"></p>
+        <label style="font-size:0.82rem; color:var(--text-muted); margin-bottom:6px; display:block;">Target Price (₹)</label>
+        <input type="number" id="priceAlertTarget" placeholder="e.g. 45000" style="width:100%; margin-bottom:18px;" min="1">
+        <button onclick="savePriceAlert()" class="glow-btn" style="width:100%;">🔔 Set Alert</button>
+        <button onclick="closeModal('priceAlertModal')" class="close-modal-btn" style="width:100%; margin-top:10px;">Cancel</button>
       </div>
     </div>
 
@@ -494,6 +535,56 @@
       catch { return fallback; }
     }
 
+    // ─── VOICE & IMAGE SEARCH ──────────────────────────────────────────────
+    let recognition;
+    function startVoiceSearch() {
+      if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+        toast("Voice search not supported in this browser.", "error");
+        return;
+      }
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRecognition();
+      recognition.lang = 'en-IN';
+      recognition.interimResults = false;
+      
+      recognition.onstart = () => { toast("Listening... Speak now 🎤", "info"); };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById("item").value = transcript;
+        search();
+      };
+      recognition.onerror = (e) => { 
+        if(e.error !== 'no-speech') toast("Voice search failed.", "error"); 
+      };
+      recognition.start();
+    }
+
+    async function handleImageSearch(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const formData = new FormData();
+      formData.append("image", file);
+
+      toast("Analyzing image... 🧠", "info");
+      
+      try {
+        const res = await fetch(`${API_BASE}/vision-search`, {
+          method: "POST",
+          body: formData
+        });
+        const data = await res.json();
+        if (data.query) {
+          document.getElementById("item").value = data.query;
+          search();
+        } else {
+          toast(data.message || "Could not identify product.", "error");
+        }
+      } catch (e) {
+        toast("Image search failed.", "error");
+      }
+    }
+
     // ─── SEARCH ──────────────────────────────────────────────────────────────
     // FIX: handleSearchKey with debounce on Enter
     function handleSearchKey(e) {
@@ -647,7 +738,8 @@
                               🏪 View on ${storeName}
                             </a>`;
         return `
-          <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.06}s">
+          <div class="card reveal ${highlight ? "highlight" : ""}" style="transition-delay:${index * 0.06}s; position:relative;">
+            <input type="checkbox" class="compare-checkbox" data-product="${productData.replace(/"/g, '&quot;')}" onchange="handleCompareCheck()" style="position:absolute;top:10px;left:10px;width:18px;height:18px;z-index:5;cursor:pointer;">
             <div class="card-img-wrap">
               <img src="${p.image}"
                    onerror="this.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/ac/No_image_available.svg/300px-No_image_available.svg.png'"
@@ -660,16 +752,113 @@
               ${storeBadge}
               ${highlight ? "<span class='badge'>Top Choice</span>" : ""}
               <button class="add-cart-btn" data-product="${productData}" onclick="addToCart(this)">Add to Cart</button>
-              <button class="watch-btn" data-product="${productData}" onclick="addToWatchlist(this)" style="background:linear-gradient(135deg,#667eea,#764ba2);margin-top:4px;padding:8px;font-size:0.82rem;border-radius:8px">📊 Watch Price</button>
+              <div style="display:flex; gap:4px; margin-top:4px;">
+                <button class="watch-btn" data-product="${productData}" onclick="addToWatchlist(this)" style="flex:1; background:linear-gradient(135deg,#667eea,#764ba2);padding:8px;font-size:0.82rem;border-radius:8px">📊 Watch</button>
+                <button data-product="${productData}" onclick="openPriceAlert(this)" style="flex:1; background:linear-gradient(135deg,#f59e0b,#ef4444);border:none;border-radius:8px;padding:8px;font-size:0.82rem;color:white;cursor:pointer;">🔔 Alert</button>
+              </div>
             </div>
           </div>`;
       });
 
       document.getElementById(id).innerHTML = cards.join("");
       setTimeout(observeNew, 50);
+      handleCompareCheck(); // Update compare bar visibility
     }
 
-    // ─── AI RECOMMENDATION ───────────────────────────────────────────────────
+    // ─── AI COMPARE ──────────────────────────────────────────────────────────
+    function handleCompareCheck() {
+      const checkboxes = document.querySelectorAll('.compare-checkbox:checked');
+      const count = checkboxes.length;
+      const bar = document.getElementById('compareBar');
+      if (count > 0) {
+        bar.style.display = 'flex';
+        document.getElementById('compareCount').innerText = `${count} item${count > 1 ? 's' : ''} selected`;
+      } else {
+        bar.style.display = 'none';
+      }
+    }
+
+    function clearCompare() {
+      document.querySelectorAll('.compare-checkbox').forEach(cb => cb.checked = false);
+      handleCompareCheck();
+    }
+
+    async function generateAICompare() {
+      const checkboxes = document.querySelectorAll('.compare-checkbox:checked');
+      if (checkboxes.length < 2) {
+        toast("Please select at least 2 items to compare.", "warning");
+        return;
+      }
+      if (checkboxes.length > 4) {
+        toast("Please select up to 4 items max.", "warning");
+        return;
+      }
+
+      const selectedProducts = Array.from(checkboxes).map(cb => JSON.parse(decodeURIComponent(cb.getAttribute('data-product'))));
+      
+      document.getElementById("aiCompareModal").style.display = "flex";
+      document.getElementById("aiCompareContent").innerHTML = "<p>🤖 AI is generating a smart comparison table...</p>";
+
+      try {
+        const res = await fetch(`${API_BASE}/ai-compare`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ products: selectedProducts })
+        });
+        const data = await res.json();
+        
+        // Render simple markdown table support
+        let htmlContent = data.comparison.replace(/\n/g, "<br>");
+        // Basic markdown table parsing (very simplified for this demo)
+        if (htmlContent.includes("|")) {
+           htmlContent = "<div style='overflow-x:auto;'><table style='width:100%; border-collapse:collapse;'>" + 
+             htmlContent.split("<br>").map(line => {
+               if(line.includes("---")) return ""; // skip separator
+               if(!line.includes("|")) return line;
+               const cells = line.split("|").filter(c => c.trim() !== "");
+               return `<tr>${cells.map(c => `<td style="border:1px solid var(--glass-border); padding:8px;">${c.trim()}</td>`).join("")}</tr>`;
+             }).join("") + "</table></div>";
+        }
+        
+        document.getElementById("aiCompareContent").innerHTML = htmlContent;
+      } catch (e) {
+        document.getElementById("aiCompareContent").innerHTML = "<p style='color:red'>Failed to generate comparison.</p>";
+      }
+    }
+
+    // ─── PRICE DROP ALERT ─────────────────────────────────────────────────────
+    let _priceAlertProduct = null;
+    function openPriceAlert(btn) {
+      const username = sessionStorage.getItem("loggedUser");
+      if (!username) { toast("Please login to set alerts.", "error"); openAuthModal(); return; }
+      _priceAlertProduct = JSON.parse(decodeURIComponent(btn.getAttribute('data-product')));
+      document.getElementById('priceAlertTitle').textContent = _priceAlertProduct.title;
+      document.getElementById('priceAlertCurrentPrice').textContent = `Current Price: ₹${parseInt(_priceAlertProduct.price).toLocaleString('en-IN')}`;
+      document.getElementById('priceAlertTarget').value = '';
+      document.getElementById('priceAlertModal').style.display = 'flex';
+      setTimeout(() => document.getElementById('priceAlertTarget').focus(), 100);
+    }
+
+    async function savePriceAlert() {
+      const username = sessionStorage.getItem("loggedUser");
+      const target = document.getElementById('priceAlertTarget').value;
+      if (!target || +target <= 0) { toast("Enter a valid target price.", "error"); return; }
+      if (+target >= +_priceAlertProduct.price) { toast("Target must be lower than current price!", "warning"); return; }
+      try {
+        const res = await fetch(`${API_BASE}/price-alert`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, product: _priceAlertProduct, targetPrice: +target })
+        });
+        const data = await res.json();
+        closeModal('priceAlertModal');
+        toast(data.message || `🔔 Alert set! We'll email when price drops below ₹${(+target).toLocaleString('en-IN')}`, "success");
+      } catch (e) {
+        toast("Failed to set alert.", "error");
+      }
+    }
+
+    // ─── AI RECOMMENDATION ────────────────────────────────────────────────────
     // FIX: Added sessionStorage caching by search query.
     // Returning to the same search shows the AI result instantly without re-calling Gemini.
     async function getAIRecommendation(query, allProducts) {
