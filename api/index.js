@@ -18,8 +18,8 @@ const router = express.Router();
 router.use(cors());
 router.use(express.json());
 
-// In-memory OTP store for development (no DB required for auth)
-let otpStore = {};
+// In-memory OTP store removed for serverless compatibility.
+
 
 // ─── 1. CLOUD SERVICES SETUP ────────────────────────────────────────────────
 
@@ -110,9 +110,14 @@ router.post("/send-otp", async (req, res) => {
   const otp = Math.floor(100000 + Math.random() * 900000);
   const expiry = Date.now() + 5 * 60 * 1000;
 
-  otpStore[username] = { otp, expiry };
-
   try {
+    const database = await connectDB();
+    await database.collection("otps").updateOne(
+      { username },
+      { $set: { otp, expiry } },
+      { upsert: true }
+    );
+
     await emailApi.sendTransacEmail({
       sender: { email: "aakasltf06@gmail.com", name: "CogniCart" },
       to: [{ email: username, name: username.split("@")[0] }],
@@ -173,17 +178,18 @@ router.post("/send-otp", async (req, res) => {
 router.post("/verify-otp", async (req, res) => {
   const { username, otp } = req.body;
 
-  const record = otpStore[username];
-  if (!record) return res.json({ success: false, message: "No OTP found" });
-  if (Date.now() > record.expiry)
-    return res.json({ success: false, message: "OTP expired" });
-  if (parseInt(otp) !== record.otp)
-    return res.json({ success: false, message: "Invalid OTP" });
-
-  delete otpStore[username];
-
   try {
     const database = await connectDB();
+    const record = await database.collection("otps").findOne({ username });
+    
+    if (!record) return res.json({ success: false, message: "No OTP found" });
+    if (Date.now() > record.expiry)
+      return res.json({ success: false, message: "OTP expired" });
+    if (parseInt(otp) !== record.otp)
+      return res.json({ success: false, message: "Invalid OTP" });
+
+    await database.collection("otps").deleteOne({ username });
+
     const usersCollection = database.collection("users");
     const user = await usersCollection.findOne(
       { username },

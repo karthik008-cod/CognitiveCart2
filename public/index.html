@@ -185,7 +185,10 @@
 
         <!-- Step 3: Password Input -->
         <div id="authStepPassword" class="auth-step" style="display:none">
-          <input type="password" id="loginPassword" placeholder="Enter Password" style="width: 100%; margin-bottom: 15px;" />
+          <div style="position: relative; margin-bottom: 15px;">
+            <input type="password" id="loginPassword" placeholder="Enter Password" style="width: 100%; padding-right: 40px;" />
+            <span onclick="togglePasswordVisibility('loginPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
+          </div>
           <button id="loginPassBtn" onclick="loginWithPassword()" style="width: 100%">Login</button>
         </div>
 
@@ -200,8 +203,14 @@
         <!-- Step 5: Set Password -->
         <div id="authStepSetPassword" class="auth-step" style="display:none">
           <p style="margin-bottom: 12px; font-size: 0.9rem; color: var(--text-body);">Setup a new password for your account</p>
-          <input type="password" id="newPassword" placeholder="Create Password" style="width: 100%; margin-bottom: 10px;" />
-          <input type="password" id="confirmPassword" placeholder="Confirm Password" style="width: 100%; margin-bottom: 15px;" />
+          <div style="position: relative; margin-bottom: 10px;">
+            <input type="password" id="newPassword" placeholder="Create Password" style="width: 100%; padding-right: 40px;" />
+            <span onclick="togglePasswordVisibility('newPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
+          </div>
+          <div style="position: relative; margin-bottom: 15px;">
+            <input type="password" id="confirmPassword" placeholder="Confirm Password" style="width: 100%; padding-right: 40px;" />
+            <span onclick="togglePasswordVisibility('confirmPassword', this)" style="position: absolute; right: 10px; top: 12px; cursor: pointer; color: var(--text-muted); font-size: 1.1rem;">👁️</span>
+          </div>
           <button id="setPassBtn" onclick="setPassword()" style="width: 100%">Complete Registration</button>
         </div>
 
@@ -802,6 +811,7 @@
       resetAuthUI();
       document.getElementById("authModal").style.display = "flex";
       document.getElementById("authMessage").innerText = "";
+      setTimeout(() => document.getElementById("username").focus(), 100);
     }
 
     function resetAuthUI() {
@@ -820,7 +830,19 @@
       const step = document.getElementById(stepId);
       if (step) {
         step.style.display = "block";
-        // Smooth transition effect if needed
+        const input = step.querySelector("input");
+        if (input) setTimeout(() => input.focus(), 100);
+      }
+    }
+
+    function togglePasswordVisibility(inputId, iconEl) {
+      const input = document.getElementById(inputId);
+      if (input.type === "password") {
+        input.type = "text";
+        iconEl.innerText = "👀";
+      } else {
+        input.type = "password";
+        iconEl.innerText = "👁️";
       }
     }
 
@@ -1026,6 +1048,8 @@
       document.getElementById("storesSection").style.display = "none";
       document.querySelector(".hero-search").style.display   = "none";
       document.getElementById("aiBox").style.display         = "none";
+      const pg = document.getElementById("paginationControls");
+      if (pg) pg.style.display = "none";
       document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
       document.getElementById(id).style.display = "block";
 
@@ -1050,6 +1074,9 @@
         flipkartData = flipkart;
         render("amazon",   amazonData);
         render("flipkart", flipkartData);
+
+        const pg = document.getElementById("paginationControls");
+        if (pg) pg.style.display = "flex";
 
         // Restore AI from sessionStorage on home navigation too
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
@@ -1422,7 +1449,8 @@
     async function loadHistory() {
       const username = localStorage.getItem("loggedUser");
       const res      = await fetch(`${API_BASE}/history/${encodeURIComponent(username)}`);
-      const history  = await res.json();
+      const data     = await res.json();
+      const history  = data.history || [];
 
       const historyEl = document.getElementById("history");
       if (!history.length) {
@@ -1665,8 +1693,19 @@
 
     // ─── AUTH INPUT LISTENER ─────────────────────────────────────────────────
     document.addEventListener("DOMContentLoaded", () => {
-      // document.getElementById("username")?.addEventListener("input", updateAuthUI);
+      const handleEnter = (id, btnId) => {
+        const el = document.getElementById(id);
+        if(el) el.addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById(btnId).click(); });
+      }
+      handleEnter("username", "checkUserBtn");
+      handleEnter("loginPassword", "loginPassBtn");
+      handleEnter("otp", "verifyOtpBtn");
+      
+      const newPass = document.getElementById("newPassword");
+      if(newPass) newPass.addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById("confirmPassword").focus(); });
+      handleEnter("confirmPassword", "setPassBtn");
     });
+
     </script>
   </body>
 </html>
