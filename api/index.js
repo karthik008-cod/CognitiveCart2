@@ -196,8 +196,8 @@ router.post("/verify-otp", async (req, res) => {
       { projection: { _id: 1, password: 1 } }
     );
     
-    if (!user) {
-      // For new users, we'll return that they need to set a password
+    if (!user || !user.password) {
+      // For new users or users without a password, we'll return that they need to set a password
       return res.json({ success: true, message: "OTP verified. Please set your password.", isNewUser: true });
     }
     

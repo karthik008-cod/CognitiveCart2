@@ -203,7 +203,7 @@
     function fc(n) { return `₹${parseInt(n || 0).toLocaleString("en-IN")}`; }
 
     async function loadWatchlist() {
-        const user = localStorage.getItem("loggedUser");
+        const user = sessionStorage.getItem("loggedUser");
         if (!user) { window.location.href = "index.html"; return; }
 
         // Profile Pill
@@ -359,7 +359,7 @@
 
     document.getElementById("logoutBtn").addEventListener("click", e => {
         e.preventDefault();
-        localStorage.removeItem("loggedUser");
+        sessionStorage.removeItem("loggedUser");
         window.location.href = "index.html";
     });
 

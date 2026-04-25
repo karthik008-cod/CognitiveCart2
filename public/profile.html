@@ -138,7 +138,7 @@
     let totalSearchesCount = 0;
 
     window.onload = async () => {
-        const user = localStorage.getItem("loggedUser");
+        const user = sessionStorage.getItem("loggedUser");
         if (!user) return;
 
         // Profile pill in nav
@@ -149,7 +149,7 @@
         nav.insertBefore(pill, document.getElementById("logoutBtn"));
 
         document.getElementById("logoutBtn").addEventListener("click", () => {
-            localStorage.removeItem("loggedUser");
+            sessionStorage.removeItem("loggedUser");
             window.location.href = "index.html";
         });
 

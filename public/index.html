@@ -476,16 +476,16 @@
       document.body.style.backgroundPosition = "center";
       document.body.style.backgroundAttachment = "fixed";
 
-      const user = localStorage.getItem("loggedUser");
+      const user = sessionStorage.getItem("loggedUser");
       if (user) showUser(user);
 
       observeNew();
 
       // Restore last search from cache instantly (no network call)
-      const lastSearch  = localStorage.getItem("lastSearch");
-      const amazonCache = safeParseJSON(localStorage.getItem("amazonData"));
-      const fkCache     = safeParseJSON(localStorage.getItem("flipkartData"));
-      const googleCache = safeParseJSON(localStorage.getItem("googleData"));
+      const lastSearch  = sessionStorage.getItem("lastSearch");
+      const amazonCache = safeParseJSON(sessionStorage.getItem("amazonData"));
+      const fkCache     = safeParseJSON(sessionStorage.getItem("flipkartData"));
+      const googleCache = safeParseJSON(sessionStorage.getItem("googleData"));
 
       if (lastSearch && (amazonCache.length || fkCache.length || googleCache.length)) {
         document.getElementById("item").value = lastSearch;
@@ -587,7 +587,7 @@
         );
 
         // Save to history fire-and-forget
-        const loggedUser = localStorage.getItem("loggedUser");
+        const loggedUser = sessionStorage.getItem("loggedUser");
         if (loggedUser) {
           fetch(`${API_BASE}/history`, {
             method: "POST",
@@ -599,10 +599,10 @@
         // Wait for all to finish for caching and AI Recommendation
         await Promise.allSettled(fetchPromises);
 
-        localStorage.setItem("lastSearch", q);
-        localStorage.setItem("amazonData", JSON.stringify(amazonData));
-        localStorage.setItem("flipkartData", JSON.stringify(flipkartData));
-        localStorage.setItem("googleData", JSON.stringify(googleData));
+        sessionStorage.setItem("lastSearch", q);
+        sessionStorage.setItem("amazonData", JSON.stringify(amazonData));
+        sessionStorage.setItem("flipkartData", JSON.stringify(flipkartData));
+        sessionStorage.setItem("googleData", JSON.stringify(googleData));
 
         const allProducts = [...amazonData, ...flipkartData, ...googleData];
         if (allProducts.length > 0) {
@@ -847,7 +847,7 @@
       render("google", g);
 
       // Re-highlight AI product
-      const lastSearch = localStorage.getItem("lastSearch");
+      const lastSearch = sessionStorage.getItem("lastSearch");
       if (lastSearch) {
         const cachedAI = sessionStorage.getItem("aiRec_" + lastSearch);
         if (cachedAI) {
@@ -1073,7 +1073,7 @@
     }
 
     function loginSuccess(username) {
-      localStorage.setItem("loggedUser", username);
+      sessionStorage.setItem("loggedUser", username);
       showUser(username);
       toast("Login successful! Welcome to CogniCart 🎉", "success");
       setTimeout(() => closeModal("authModal"), 1000);
@@ -1096,7 +1096,7 @@
     }
 
     function logout() {
-      localStorage.removeItem("loggedUser");
+      sessionStorage.removeItem("loggedUser");
       location.reload();
     }
 
@@ -1121,10 +1121,10 @@
       document.getElementById("aiBox").style.display         = "block";
       document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
 
-      const lastSearch = localStorage.getItem("lastSearch");
-      const amazon     = safeParseJSON(localStorage.getItem("amazonData"));
-      const flipkart   = safeParseJSON(localStorage.getItem("flipkartData"));
-      const google     = safeParseJSON(localStorage.getItem("googleData"));
+      const lastSearch = sessionStorage.getItem("lastSearch");
+      const amazon     = safeParseJSON(sessionStorage.getItem("amazonData"));
+      const flipkart   = safeParseJSON(sessionStorage.getItem("flipkartData"));
+      const google     = safeParseJSON(sessionStorage.getItem("googleData"));
 
       if (lastSearch && (amazon.length || flipkart.length || google.length)) {
         document.getElementById("item").value = lastSearch;
@@ -1156,7 +1156,7 @@
 
     // ─── CART ────────────────────────────────────────────────────────────────
     async function addToCart(btn) {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       if (!username) {
         toast("Please login first ⚠️", "error");
         openAuthModal();
@@ -1187,7 +1187,7 @@
 
     // ─── WATCHLIST / PRICE TRACKING ──────────────────────────────────────────
     async function addToWatchlist(btn) {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       if (!username) {
         toast("Please login first ⚠️", "error");
         openAuthModal();
@@ -1216,7 +1216,7 @@
     }
 
     async function loadCart() {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       if (!username) return;
 
       const cartEl = document.getElementById("cart");
@@ -1307,7 +1307,7 @@
     }
 
     async function removeFromCart(index) {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       try {
         const res = await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}/${index}`, { method: "DELETE" });
         const data = await res.json();
@@ -1319,7 +1319,7 @@
     }
 
     async function clearCart() {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       try {
         await fetch(`${API_BASE}/cart/${encodeURIComponent(username)}`, { method: "DELETE" });
         toast("Cart cleared!", "success");
@@ -1387,7 +1387,7 @@
       if (payBtn) { payBtn.disabled = true; payBtn.textContent = "Processing…"; }
 
       try {
-        const username = localStorage.getItem("loggedUser");
+        const username = sessionStorage.getItem("loggedUser");
         const res = await fetch(`${API_BASE}/place-order-multi`, {
           method:  "POST",
           headers: { "Content-Type": "application/json" },
@@ -1455,7 +1455,7 @@
     }
 
     async function loadOrders() {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       const res      = await fetch(`${API_BASE}/orders/${encodeURIComponent(username)}`);
       const orders   = await res.json();
 
@@ -1512,7 +1512,7 @@
     }
 
     async function loadHistory() {
-      const username = localStorage.getItem("loggedUser");
+      const username = sessionStorage.getItem("loggedUser");
       const res      = await fetch(`${API_BASE}/history/${encodeURIComponent(username)}`);
       const data     = await res.json();
       const history  = data.history || [];
@@ -1697,11 +1697,11 @@
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
 
         try {
-          const username = localStorage.getItem("loggedUser");
+          const username = sessionStorage.getItem("loggedUser");
 
           // Build search context from current search results on screen
           let searchContext = null;
-          const lastSearch = localStorage.getItem("lastSearch");
+          const lastSearch = sessionStorage.getItem("lastSearch");
           const allProducts = [...amazonData, ...flipkartData, ...googleData];
           if (lastSearch && allProducts.length) {
             searchContext = {
