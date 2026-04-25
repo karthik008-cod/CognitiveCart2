@@ -333,6 +333,84 @@
       ];
       document.getElementById("heroTagline").innerText = taglines[Math.floor(Math.random() * taglines.length)];
 
+      // ─── DYNAMIC THEME & BACKGROUND ───────────────────────────────────────────
+      const themes = [
+        {
+          bg: "url('assets/bg/bg1.png')",
+          vars: {
+            '--primary': '#facc15',
+            '--primary-glow': 'rgba(250, 204, 21, 0.35)',
+            '--secondary': '#ef4444',
+            '--accent': '#f87171',
+            '--accent-glow': 'rgba(248, 113, 113, 0.25)',
+            '--bg-void': '#090705',
+            '--bg-deep': '#14100c',
+            '--bg-surface': '#1c1611',
+            '--bg-raised': '#261e16'
+          },
+          overlay: "rgba(9, 7, 5, 0.88)"
+        },
+        {
+          bg: "url('assets/bg/bg2.png')",
+          vars: {
+            '--primary': '#f59e0b',
+            '--primary-glow': 'rgba(245, 158, 11, 0.35)',
+            '--secondary': '#d97706',
+            '--accent': '#fbbf24',
+            '--accent-glow': 'rgba(251, 191, 36, 0.25)',
+            '--bg-void': '#0a0a0a',
+            '--bg-deep': '#121212',
+            '--bg-surface': '#1a1a1a',
+            '--bg-raised': '#242424'
+          },
+          overlay: "rgba(10, 10, 10, 0.88)"
+        },
+        {
+          bg: "url('assets/bg/bg3.png')",
+          vars: {
+            '--primary': '#10b981',
+            '--primary-glow': 'rgba(16, 185, 129, 0.35)',
+            '--secondary': '#3b82f6',
+            '--accent': '#8b5cf6',
+            '--accent-glow': 'rgba(139, 92, 246, 0.25)',
+            '--bg-void': '#060912',
+            '--bg-deep': '#0b1120',
+            '--bg-surface': '#111827',
+            '--bg-raised': '#1a2235'
+          },
+          overlay: "rgba(6, 9, 18, 0.88)"
+        },
+        {
+          bg: "url('assets/bg/bg4.png')",
+          vars: {
+            '--primary': '#3b82f6',
+            '--primary-glow': 'rgba(59, 130, 246, 0.35)',
+            '--secondary': '#2563eb',
+            '--accent': '#60a5fa',
+            '--accent-glow': 'rgba(96, 165, 250, 0.25)',
+            '--bg-void': '#060912',
+            '--bg-deep': '#0b1120',
+            '--bg-surface': '#111827',
+            '--bg-raised': '#1a2235'
+          },
+          overlay: "rgba(6, 9, 18, 0.92)"
+        }
+      ];
+
+      const activeTheme = themes[Math.floor(Math.random() * themes.length)];
+      
+      // Apply CSS variables
+      const root = document.documentElement;
+      for (const [key, value] of Object.entries(activeTheme.vars)) {
+        root.style.setProperty(key, value);
+      }
+
+      // Apply background image with overlay
+      document.body.style.backgroundImage = `linear-gradient(${activeTheme.overlay}, ${activeTheme.overlay}), ${activeTheme.bg}`;
+      document.body.style.backgroundSize = "cover";
+      document.body.style.backgroundPosition = "center";
+      document.body.style.backgroundAttachment = "fixed";
+
       const user = localStorage.getItem("loggedUser");
       if (user) showUser(user);
 
