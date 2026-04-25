@@ -1197,6 +1197,24 @@ router.delete("/watchlist/:watchlistId", async (req, res) => {
   }
 });
 
+// Move product to a different folder
+router.put("/watchlist/:watchlistId/move", async (req, res) => {
+  const { folder } = req.body;
+  if (!folder) return res.status(400).json({ message: "Folder name is required" });
+  try {
+    const db = await connectDB();
+    const { ObjectId } = require("mongodb");
+    await db.collection("watchlist").updateOne(
+      { _id: new ObjectId(req.params.watchlistId) },
+      { $set: { folder } }
+    );
+    res.json({ message: `Moved to ${folder}` });
+  } catch (err) {
+    console.error("Move watchlist error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // ─── PRICE CHECKING & NOTIFICATION LOGIC ─────────────────────────────────────
 
 // Helper: Update product price and check for drops

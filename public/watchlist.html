@@ -144,6 +144,23 @@
     </div>
 </div>
 
+<!-- Move Folder Modal -->
+<div id="moveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.78); backdrop-filter:blur(8px); z-index:10000; align-items:center; justify-content:center;">
+  <div style="background:var(--surface); border:1px solid rgba(16,185,129,0.3); border-radius:24px; padding:36px 32px; max-width:380px; width:90%; box-shadow:0 32px 80px rgba(0,0,0,0.6); animation:popIn 0.3s cubic-bezier(0.175,0.885,0.32,1.275);">
+    <div style="font-size:2.5rem; text-align:center; margin-bottom:12px">🔀</div>
+    <h3 style="text-align:center; font-size:1.2rem; margin-bottom:6px;">Move to Folder</h3>
+    <p style="text-align:center; color:var(--text-muted); font-size:0.85rem; margin-bottom:20px;">Select the destination folder.</p>
+    
+    <select id="moveFolderDropdown" style="width:100%; padding:12px; border-radius:12px; border:1px solid rgba(16,185,129,0.4); background:rgba(16,185,129,0.06); color:#f1f5f9; font-size:0.95rem; outline:none; margin-bottom:18px;">
+    </select>
+    
+    <div style="display:flex; gap:10px;">
+      <button onclick="document.getElementById('moveModal').style.display='none'" style="flex:1; padding:12px; border-radius:12px; background:var(--surface2); border:1px solid var(--border); color:var(--text-muted); cursor:pointer; font-weight:600;">Cancel</button>
+      <button onclick="confirmMoveItem()" style="flex:1; padding:12px; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); border:none; color:#fff; cursor:pointer; font-weight:700;">✓ Move</button>
+    </div>
+  </div>
+</div>
+
 <nav>
     <a href="index.html" style="text-decoration:none; color:inherit; display:flex; align-items:center;">
         <h1 style="cursor:pointer">🛒 Cogni <span>Cart</span></h1>
@@ -423,7 +440,8 @@
 
                 <div class="card-actions">
                     <button class="btn-remove" id="remove-${item._id}">🗑 Remove</button>
-                    ${buyLink !== '#' ? `<a class="btn-buy card-actions" style="flex:1;border-radius:11px;font-weight:700;font-size:0.84rem" href="${buyLink}" target="_blank" rel="noopener">🛒 Buy Now</a>` : `<button class="btn-buy">🛒 Search Again</button>`}
+                    <button class="btn-remove" onclick="openMoveModal('${item._id}', '${item.folder || 'My Wishlist'}')" style="background:rgba(16,185,129,0.12); color:#6ee7b7; border:1px solid rgba(16,185,129,0.25);">🔀 Move</button>
+                    ${buyLink !== '#' ? `<a class="btn-buy card-actions" style="flex:1;border-radius:11px;font-weight:700;font-size:0.84rem" href="${buyLink}" target="_blank" rel="noopener">🛒 Buy Now</a>` : `<button class="btn-buy">🛒 Search</button>`}
                 </div>
             </div>
         </div>`;
@@ -476,6 +494,33 @@
 
     function createFolder() {
         openFolderModal();
+    }
+
+    let _itemToMove = null;
+    function openMoveModal(itemId, currentFolder) {
+        _itemToMove = itemId;
+        const folders = Object.keys(window._watchlistFolders || {});
+        const dropdown = document.getElementById("moveFolderDropdown");
+        dropdown.innerHTML = folders.map(f => `<option value="${f}" ${f === currentFolder ? 'disabled' : ''}>${f}${f === currentFolder ? ' (Current)' : ''}</option>`).join("");
+        document.getElementById("moveModal").style.display = "flex";
+    }
+
+    async function confirmMoveItem() {
+        if (!_itemToMove) return;
+        const folder = document.getElementById("moveFolderDropdown").value;
+        try {
+            const res = await fetch(`${API_BASE}/watchlist/${_itemToMove}/move`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ folder })
+            });
+            if (!res.ok) throw new Error(`Server ${res.status}`);
+            toast(`Moved to ${folder} ✓`, "success");
+            document.getElementById("moveModal").style.display = "none";
+            loadWatchlist();
+        } catch (err) {
+            toast("Failed to move: " + err.message, "error");
+        }
     }
 
     document.getElementById("logoutBtn").addEventListener("click", e => {
