@@ -126,6 +126,14 @@
         .spinner { width: 48px; height: 48px; border: 4px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 20px; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
+        .folder-bar-container { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; padding: 8px; background: rgba(255,255,255,0.03); border-radius: 20px; border: 1px solid var(--border); overflow-x: auto; scrollbar-width: none; }
+        .folder-bar-container::-webkit-scrollbar { display: none; }
+        .folder-tab { border-radius: 14px; padding: 8px 20px; font-size: 0.88rem; cursor: pointer; font-weight: 600; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); white-space: nowrap; border: 1px solid transparent; background: transparent; color: var(--text-muted); }
+        .folder-tab:hover { color: var(--text); background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); }
+        .folder-tab.active { background: linear-gradient(135deg, var(--accent), var(--accent2)); color: #fff; border-color: transparent; box-shadow: 0 8px 20px rgba(99,102,241,0.3); transform: translateY(-1px); }
+        .folder-tab.active span { background: rgba(255,255,255,0.2); }
+        .folder-tab span { font-size: 0.72rem; opacity: 0.8; margin-left: 6px; background: rgba(255,255,255,0.08); padding: 2px 8px; border-radius: 8px; transition: 0.3s; }
+
         @media (max-width: 640px) { .watchlist-grid { grid-template-columns: 1fr; } nav { flex-direction: column; gap: 12px; padding: 1rem; } .page-wrap { padding: 20px 14px; } .page-header { flex-direction: column; align-items: flex-start; } }
     </style>
 </head>
@@ -316,16 +324,22 @@
         const folders = window._watchlistFolders;
         const active  = window._activeFolder;
         const bar = document.getElementById("folderBar");
-        bar.style.display = "flex";
-        bar.innerHTML = `<span style="font-weight:600;color:var(--text-muted);font-size:0.82rem;white-space:nowrap">📁 FOLDERS:</span>`
-          + Object.keys(folders).map(f => `
-            <button onclick="switchFolder('${f}',this)" style="border-radius:20px;padding:6px 16px;font-size:0.82rem;cursor:pointer;font-weight:600;transition:0.2s;
-              background:${f===active?'linear-gradient(135deg,#6366f1,#8b5cf6)':'rgba(255,255,255,0.05)'};
-              border:1px solid ${f===active?'transparent':'rgba(255,255,255,0.1)'};
-              color:${f===active?'#fff':'var(--text-muted)'}">
-              ${f} <span style="font-size:0.75rem;opacity:0.7">(${folders[f].length})</span>
-            </button>`).join("")
-          + `<button onclick="openFolderModal()" style="border-radius:20px;padding:6px 16px;font-size:0.82rem;cursor:pointer;font-weight:600;background:rgba(99,102,241,0.1);border:1px dashed rgba(99,102,241,0.4);color:#a5b4fc;">+ New Folder</button>`;
+        
+        // Use the new CSS classes for better styling and visibility
+        bar.className = "folder-bar-container";
+        bar.style.display = "flex"; 
+        
+        bar.innerHTML = `
+            <div style="padding: 0 12px; font-weight: 700; color: var(--accent); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px; border-right: 1px solid var(--border); margin-right: 8px;">Folders</div>
+            ${Object.keys(folders).map(f => `
+                <button onclick="switchFolder('${f}', this)" class="folder-tab ${f === active ? 'active' : ''}">
+                    ${f} <span>${folders[f].length}</span>
+                </button>
+            `).join("")}
+            <button onclick="openFolderModal()" style="border-radius: 14px; padding: 8px 20px; font-size: 0.88rem; cursor: pointer; font-weight: 600; background: rgba(99,102,241,0.08); border: 1px dashed var(--accent); color: var(--accent); transition: 0.2s; margin-left: auto; white-space: nowrap;">
+                + New Folder
+            </button>
+        `;
     }
 
     function renderFolderGrid(folderName) {
