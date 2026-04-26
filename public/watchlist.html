@@ -474,7 +474,7 @@
                 <div class="card-actions">
                     <button class="btn-remove" id="remove-${item._id}">🗑 Remove</button>
                     <button class="btn-remove" onclick="openMoveModal('${item._id}', '${item.folder || 'My Wishlist'}')" style="background:rgba(16,185,129,0.12); color:#6ee7b7; border:1px solid rgba(16,185,129,0.25);">🔀 Move</button>
-                    ${buyLink !== '#' ? `<a class="btn-buy card-actions" style="flex:1;border-radius:11px;font-weight:700;font-size:0.84rem" href="${buyLink}" target="_blank" rel="noopener">🛒 Buy Now</a>` : `<button class="btn-buy">🛒 Search</button>`}
+                    ${buyLink !== '#' ? `<a class="btn-buy card-actions" style="flex:1;border-radius:11px;font-weight:700;font-size:0.84rem" href="${buyLink}" target="_blank" rel="noopener">🛒 Buy Now</a>` : `<button class="btn-buy" onclick="searchForProduct('${item.product?.title ? item.product.title.replace(/'/g, "\\'") : ''}')">🛒 Search</button>`}
                 </div>
             </div>
         </div>`;
@@ -523,6 +523,12 @@
 
     function filterFolder(folderName, btn) {
         switchFolder(folderName, btn);
+    }
+
+    function searchForProduct(title) {
+        if (!title) return;
+        sessionStorage.setItem("lastSearch", title);
+        window.location.href = "index.html";
     }
 
     function createFolder() {
