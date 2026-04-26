@@ -996,7 +996,7 @@ router.post("/vision-search", upload.single("image"), async (req, res) => {
             {
               role: "user",
               content: [
-                { type: "text", text: "Identify the main product in this image. Respond ONLY with a 2-4 word search query to find this item on an e-commerce site (e.g. 'Apple iPhone 15' or 'Nike Running Shoes')." },
+                { type: "text", text: "You are a product identifier. Look at this image and output ONLY a 2-4 word e-commerce search query for the main product (e.g. Nike Running Shoes). NO conversational text. NO punctuation." },
                 { type: "image_url", image_url: { url: dataUri } }
               ]
             }

@@ -575,7 +575,9 @@
         });
         const data = await res.json();
         if (data.query) {
-          document.getElementById("item").value = data.query;
+          // If the query is returned with quotes, strip them
+          const finalQuery = data.query.replace(/['"]/g, "").trim();
+          document.getElementById("item").value = finalQuery;
           search();
         } else {
           toast(data.message || "Could not identify product.", "error");
@@ -586,6 +588,8 @@
     }
 
     // ─── SEARCH ──────────────────────────────────────────────────────────────
+    let currentSearchId = 0;
+
     // FIX: handleSearchKey with debounce on Enter
     function handleSearchKey(e) {
       if (e.key !== "Enter") return;
@@ -595,8 +599,9 @@
 
     async function search(page = 1) {
       const q = document.getElementById("item").value.trim();
-      if (!q || isSearching) return;
+      if (!q) return;
 
+      const searchId = ++currentSearchId;
       currentPage = page;
       isSearching = true;
 
@@ -647,12 +652,16 @@
                 });
               }
 
+              if (searchId !== currentSearchId) return products; // Skip outdated renders
+
               // Render this section immediately
               render(store, filtered);
               return products;
             })
             .catch(() => {
-              document.getElementById(store).innerHTML = "<p style='color:red'>Search failed</p>";
+              if (searchId === currentSearchId) {
+                document.getElementById(store).innerHTML = "<p style='color:red'>Search failed</p>";
+              }
               return [];
             })
         );
@@ -670,6 +679,8 @@
         // Wait for all to finish for caching and AI Recommendation
         await Promise.allSettled(fetchPromises);
 
+        if (searchId !== currentSearchId) return; // Abort if user searched again
+
         sessionStorage.setItem("lastSearch", q);
         sessionStorage.setItem("amazonData", JSON.stringify(amazonData));
         sessionStorage.setItem("flipkartData", JSON.stringify(flipkartData));
@@ -684,20 +695,23 @@
         }
 
       } catch (err) {
+        if (searchId !== currentSearchId) return;
         console.error("Search error:", err);
         document.getElementById("amazon").innerHTML   = "<p>Failed to connect to server.</p>";
         document.getElementById("flipkart").innerHTML = "<p>Failed to connect to server.</p>";
         aiBox.innerHTML = "";
       } finally {
-        isSearching = false;
-        
-        // Update pagination UI
-        const pg = document.getElementById("paginationControls");
-        if (pg) {
-          pg.style.display = "flex";
-          document.getElementById("pageDisplay").innerText = `Page ${currentPage}`;
-          document.getElementById("prevPageBtn").disabled = (currentPage === 1);
-          document.getElementById("prevPageBtn").style.opacity = (currentPage === 1) ? "0.5" : "1";
+        if (searchId === currentSearchId) {
+          isSearching = false;
+          
+          // Update pagination UI
+          const pg = document.getElementById("paginationControls");
+          if (pg) {
+            pg.style.display = "flex";
+            document.getElementById("pageDisplay").innerText = `Page ${currentPage}`;
+            document.getElementById("prevPageBtn").disabled = (currentPage === 1);
+            document.getElementById("prevPageBtn").style.opacity = (currentPage === 1) ? "0.5" : "1";
+          }
         }
       }
     }
