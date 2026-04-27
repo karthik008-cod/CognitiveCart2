@@ -246,10 +246,10 @@
       }
 
       // Stats
-      const active   = alerts.filter(a => !a.notified).length;
+      // Total includes all alerts ever created (even deleted ones)
+      const active   = alerts.filter(a => !a.notified && !a.isDeleted).length;
       const notified = alerts.filter(a => a.notified).length;
-      const reached  = alerts.filter(a => a.currentPrice <= a.targetPrice).length;
-      const lowestTarget = Math.min(...alerts.map(a => a.targetPrice));
+      const reached  = alerts.filter(a => a.currentPrice <= a.targetPrice && !a.isDeleted).length;
 
       document.getElementById("statsContainer").style.display = "grid";
       document.getElementById("statsContainer").innerHTML = `
@@ -258,18 +258,30 @@
         <div class="stat-box green"><div class="stat-value">${reached}</div><div class="stat-label">Target Reached</div></div>
         <div class="stat-box red"><div class="stat-value">${notified}</div><div class="stat-label">Notified</div></div>`;
 
+      // Only show active alerts in the grid (hide deleted and notified ones from the list as requested)
+      const activeAlerts = alerts.filter(a => !a.notified && !a.isDeleted);
+      
       const grid = document.getElementById("alertsGrid");
-      grid.innerHTML = alerts.map(a => createCard(a)).join("");
+      const emptyState = document.getElementById("emptyState");
 
-      // Attach chart and remove listeners
-      alerts.forEach(a => {
-        renderChart(a);
-        document.getElementById(`remove-${a._id}`)?.addEventListener("click", () => removeAlert(a._id));
-        document.getElementById(`save-${a._id}`)?.addEventListener("click", () => updateTarget(a._id));
-      });
+      if (activeAlerts.length === 0) {
+        grid.innerHTML = "";
+        emptyState.style.display = "block";
+      } else {
+        emptyState.style.display = "none";
+        grid.innerHTML = activeAlerts.map(a => createCard(a)).join("");
+
+        // Attach chart and remove listeners for the rendered cards
+        activeAlerts.forEach(a => {
+          renderChart(a);
+          document.getElementById(`remove-${a._id}`)?.addEventListener("click", () => removeAlert(a._id));
+          document.getElementById(`save-${a._id}`)?.addEventListener("click", () => updateTarget(a._id));
+        });
+      }
 
       // Immediately fire email for any already-reached alerts (don't wait for cron)
-      const reachedAlerts = alerts.filter(a => a.currentPrice <= a.targetPrice);
+      // Only do this for active (non-deleted, non-notified) alerts
+      const reachedAlerts = activeAlerts.filter(a => a.currentPrice <= a.targetPrice);
       for (const a of reachedAlerts) {
         fetch(`${API_BASE}/trigger-alert/${a._id}`, { method: "POST" })
           .then(r => r.json())

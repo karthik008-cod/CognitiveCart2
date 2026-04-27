@@ -1064,8 +1064,11 @@ router.post("/trigger-alert/:alertId", async (req, res) => {
     if (alert.currentPrice <= alert.targetPrice) {
       const sent = await sendTargetPriceEmail(alert.username, alert.product, alert.currentPrice, alert.targetPrice);
       if (sent) {
-        await db.collection("price_alerts").deleteOne({ _id: alert._id });
-        return res.json({ triggered: true, message: "Email sent and alert removed" });
+        await db.collection("price_alerts").updateOne(
+          { _id: alert._id },
+          { $set: { notified: true, notifiedAt: new Date() } }
+        );
+        return res.json({ triggered: true, message: "Email sent and alert archived" });
       }
       return res.status(500).json({ triggered: false, message: "Email failed" });
     }
@@ -1082,7 +1085,10 @@ router.delete("/price-alerts/:alertId", async (req, res) => {
   try {
     const { ObjectId } = require("mongodb");
     const db = await connectDB();
-    await db.collection("price_alerts").deleteOne({ _id: new ObjectId(req.params.alertId) });
+    await db.collection("price_alerts").updateOne(
+      { _id: new ObjectId(req.params.alertId) },
+      { $set: { isDeleted: true } }
+    );
     res.json({ message: "Alert removed" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
@@ -1567,8 +1573,11 @@ async function checkPriceAlerts() {
         if (livePrice <= alert.targetPrice) {
           const emailSent = await sendTargetPriceEmail(alert.username, alert.product, livePrice, alert.targetPrice);
           if (emailSent) {
-            await db.collection("price_alerts").deleteOne({ _id: alert._id });
-            console.log(`[PRICE ALERT] Notified and removed ${alert.username} — ${alert.product.title} hit target \u20b9${alert.targetPrice}`);
+            await db.collection("price_alerts").updateOne(
+              { _id: alert._id },
+              { $set: { notified: true, notifiedAt: new Date() } }
+            );
+            console.log(`[PRICE ALERT] Notified ${alert.username} — ${alert.product.title} hit target \u20b9${alert.targetPrice}`);
           }
         }
       } catch (e) {
