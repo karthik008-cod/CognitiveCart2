@@ -102,6 +102,47 @@
         color: white; border-color: transparent; box-shadow: 0 4px 10px rgba(99, 102, 241, 0.3);
       }
       option { background: #111827; color: #f1f5f9; }
+
+      /* ── Unified Nav Buttons ── */
+      .nav-btn {
+        background: transparent;
+        border: 1px solid rgba(255,255,255,0.1);
+        border-radius: 20px;
+        padding: 7px 16px;
+        color: var(--text-muted);
+        font-size: 0.84rem;
+        font-weight: 500;
+        cursor: pointer;
+        transition: background 0.2s, color 0.2s, border-color 0.2s;
+        white-space: nowrap;
+      }
+      .nav-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: rgba(255,255,255,0.18); }
+      .nav-btn.active {
+        background: var(--primary);
+        border-color: transparent;
+        color: #000;
+        font-weight: 700;
+      }
+      .nav-btn-profile {
+        background: rgba(255,255,255,0.05) !important;
+        border-color: rgba(255,255,255,0.12) !important;
+        color: var(--text) !important;
+        display: flex; align-items: center; gap: 6px;
+      }
+      .nav-btn-profile:hover { background: rgba(255,255,255,0.1) !important; }
+      .nav-btn-logout {
+        color: rgba(239,68,68,0.75) !important;
+        border-color: rgba(239,68,68,0.18) !important;
+      }
+      .nav-btn-logout:hover { background: rgba(239,68,68,0.08) !important; color: #ef4444 !important; border-color: rgba(239,68,68,0.35) !important; }
+
+      /* ── Section Transition Animation ── */
+      @keyframes sectionSlideIn {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .user-section { animation: none; }
+      .user-section.animating { animation: sectionSlideIn 0.32s cubic-bezier(0.22,1,0.36,1) both; }
     </style>
   </head>
   <body>
@@ -1253,17 +1294,23 @@
       document.getElementById(id).style.display = "none";
     }
 
+    function setActiveNav(sectionId) {
+      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+      if (sectionId) {
+        const btn = document.getElementById('nav-' + sectionId);
+        if (btn) btn.classList.add('active');
+      }
+    }
+
     function showUser(username) {
       document.getElementById("userControls").innerHTML = `
-        <button onclick="window.location.href='profile.html'" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:20px;padding:6px 14px;color:var(--text);display:flex;align-items:center;gap:6px;transition:all 0.2s" onmouseover="this.style.background='rgba(255,255,255,0.1)'" onmouseout="this.style.background='rgba(255,255,255,0.05)'">
-          👤 ${username}
-        </button>
-        <button onclick="showSection('orders')" style="background:transparent;border:1px solid var(--primary)">My Orders</button>
-        <button onclick="showSection('history')" style="background:transparent;border:1px solid var(--primary)">History</button>
-        <button onclick="window.location.href='watchlist.html'" style="background:transparent;border:1px solid var(--primary)">📊 Watchlist</button>
-        <button onclick="window.location.href='alerts.html'" style="background:transparent;border:1px solid var(--primary)">Alerts</button>
-        <button onclick="showSection('cart')">Cart</button>
-        <button class="logout-btn" onclick="logout()">Logout</button>`;
+        <button id="nav-profile" class="nav-btn nav-btn-profile" onclick="window.location.href='profile.html'">👤 ${username}</button>
+        <button id="nav-orders"   class="nav-btn" onclick="showSection('orders')">My Orders</button>
+        <button id="nav-history"  class="nav-btn" onclick="showSection('history')">History</button>
+        <button id="nav-watchlist" class="nav-btn" onclick="window.location.href='watchlist.html'">Watchlist</button>
+        <button id="nav-alerts"   class="nav-btn" onclick="window.location.href='alerts.html'">Alerts</button>
+        <button id="nav-cart"     class="nav-btn" onclick="showSection('cart')">Cart</button>
+        <button id="nav-logout"   class="nav-btn nav-btn-logout" onclick="logout()">Logout</button>`;
     }
 
     function logout() {
@@ -1278,9 +1325,17 @@
       document.getElementById("aiBox").style.display         = "none";
       const pg = document.getElementById("paginationControls");
       if (pg) pg.style.display = "none";
-      document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
-      document.getElementById(id).style.display = "block";
+      document.querySelectorAll(".user-section").forEach(s => { s.style.display = "none"; s.classList.remove("animating"); });
 
+      const section = document.getElementById(id);
+      section.style.display = "block";
+      // Trigger animation
+      requestAnimationFrame(() => {
+        section.classList.remove("animating");
+        requestAnimationFrame(() => section.classList.add("animating"));
+      });
+
+      setActiveNav(id);
       if (id === "cart")    loadCart();
       if (id === "orders")  loadOrders();
       if (id === "history") loadHistory();
@@ -1290,7 +1345,8 @@
       document.querySelector(".hero-search").style.display  = "flex";
       document.getElementById("storesSection").style.display = "flex";
       document.getElementById("aiBox").style.display         = "block";
-      document.querySelectorAll(".user-section").forEach(s => s.style.display = "none");
+      document.querySelectorAll(".user-section").forEach(s => { s.style.display = "none"; s.classList.remove("animating"); });
+      setActiveNav(null);
 
       const lastSearch = sessionStorage.getItem("lastSearch");
       const amazon     = safeParseJSON(sessionStorage.getItem("amazonData"));

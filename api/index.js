@@ -1505,14 +1505,29 @@ async function checkPriceAlerts() {
 
     for (const alert of alerts) {
       try {
-        // Re-fetch current price by searching for the product
-        const searchResults = await Promise.all([
-          scrapeAmazon(alert.product.title),
-          scrapeFlipkart(alert.product.title),
-        ]);
+        // Prefer the watchlist's already-scraped price for this user+product (avoids discrepancy)
         let livePrice = null;
-        for (const results of searchResults) {
-          if (results[0] && results[0].price) { livePrice = parseInt(results[0].price); break; }
+        try {
+          const watchlistMatch = await db.collection("watchlist").findOne(
+            { username: alert.username, "product.title": alert.product.title, isActive: true },
+            { projection: { priceHistory: 1 } }
+          );
+          if (watchlistMatch?.priceHistory?.length) {
+            const latest = watchlistMatch.priceHistory[watchlistMatch.priceHistory.length - 1];
+            const ageMs = Date.now() - new Date(latest.timestamp).getTime();
+            if (ageMs < 4 * 60 * 60 * 1000) livePrice = latest.price; // use if < 4 hours old
+          }
+        } catch (_) {}
+
+        // Fall back to fresh scrape if no watchlist match
+        if (!livePrice) {
+          const searchResults = await Promise.all([
+            scrapeAmazon(alert.product.title),
+            scrapeFlipkart(alert.product.title),
+          ]);
+          for (const results of searchResults) {
+            if (results[0] && results[0].price) { livePrice = parseInt(results[0].price); break; }
+          }
         }
         if (!livePrice) continue;
 
