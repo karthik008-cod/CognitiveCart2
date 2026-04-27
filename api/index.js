@@ -1528,11 +1528,8 @@ async function checkPriceAlerts() {
         if (livePrice <= alert.targetPrice) {
           const emailSent = await sendTargetPriceEmail(alert.username, alert.product, livePrice, alert.targetPrice);
           if (emailSent) {
-            await db.collection("price_alerts").updateOne(
-              { _id: alert._id },
-              { $set: { notified: true, notifiedAt: new Date() } }
-            );
-            console.log(`[PRICE ALERT] Notified ${alert.username} — ${alert.product.title} hit target \u20b9${alert.targetPrice}`);
+            await db.collection("price_alerts").deleteOne({ _id: alert._id });
+            console.log(`[PRICE ALERT] Notified and removed ${alert.username} — ${alert.product.title} hit target \u20b9${alert.targetPrice}`);
           }
         }
       } catch (e) {
