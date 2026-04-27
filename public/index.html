@@ -2011,6 +2011,20 @@
       const newPass = document.getElementById("newPassword");
       if(newPass) newPass.addEventListener("keydown", e => { if(e.key === "Enter") document.getElementById("confirmPassword").focus(); });
       handleEnter("confirmPassword", "setPassBtn");
+
+      // Handle section query parameter (e.g. ?section=orders)
+      const params = new URLSearchParams(window.location.search);
+      const section = params.get("section");
+      if (section && ["cart", "orders", "history"].includes(section)) {
+        setTimeout(() => {
+          if (sessionStorage.getItem("loggedUser")) {
+            showSection(section);
+          } else {
+            toast("Please login to view this section", "info");
+            openAuthModal();
+          }
+        }, 100);
+      }
     });
 
     </script>

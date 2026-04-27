@@ -28,10 +28,43 @@
     nav h1 { font-size: 1.3rem; font-weight: 800; letter-spacing: -0.5px; }
     nav h1 span { background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; color: transparent; }
     .nav-links { display: flex; gap: 6px; align-items: center; }
-    .nav-links a { color: var(--text-muted); text-decoration: none; font-size: 0.88rem; font-weight: 500; padding: 7px 14px; border-radius: 8px; transition: background 0.2s, color 0.2s; }
-    .nav-links a:hover { background: var(--surface2); color: var(--text); }
-    .nav-links a.active { background: var(--accent); color: #fff; }
-    .nav-pill { background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.1) !important; border-radius: 20px !important; color: var(--text) !important; }
+
+    /* Unified Nav Buttons */
+    .nav-btn {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 20px;
+      padding: 7px 16px;
+      color: var(--text-muted);
+      font-size: 0.84rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s, border-color 0.2s;
+      white-space: nowrap;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); border-color: rgba(255,255,255,0.18); }
+    .nav-btn.active {
+      background: var(--accent); /* Using accent for highlight in subpages */
+      border-color: transparent;
+      color: #fff;
+      font-weight: 700;
+    }
+    .nav-btn-profile {
+      background: rgba(255,255,255,0.05) !important;
+      border-color: rgba(255,255,255,0.12) !important;
+      color: var(--text) !important;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .nav-btn-profile:hover { background: rgba(255,255,255,0.1) !important; }
+    .nav-btn-logout {
+      color: rgba(239,68,68,0.75) !important;
+      border-color: rgba(239,68,68,0.18) !important;
+    }
+    .nav-btn-logout:hover { background: rgba(239,68,68,0.08) !important; color: #ef4444 !important; border-color: rgba(239,68,68,0.35) !important; }
 
     .page-wrap { max-width: 1200px; margin: 0 auto; padding: 36px 24px; }
     .page-header { margin-bottom: 32px; }
@@ -117,9 +150,12 @@
     <h1 style="cursor:pointer">&#x1F6D2; Cogni <span>Cart</span></h1>
   </a>
   <div class="nav-links" id="navLinks">
-    <a href="watchlist.html">Watchlist</a>
-    <a href="alerts.html" class="active">Alerts</a>
-    <a href="#" id="logoutBtn">Logout</a>
+    <a href="index.html?section=orders" class="nav-btn">My Orders</a>
+    <a href="index.html?section=history" class="nav-btn">History</a>
+    <a href="watchlist.html" class="nav-btn">Watchlist</a>
+    <a href="alerts.html" class="nav-btn active">Alerts</a>
+    <a href="index.html?section=cart" class="nav-btn">Cart</a>
+    <a href="#" id="logoutBtn" class="nav-btn nav-btn-logout">Logout</a>
   </div>
 </nav>
 
@@ -187,7 +223,7 @@
     const nav = document.getElementById("navLinks");
     if (!document.getElementById("profilePill")) {
       const a = document.createElement("a");
-      a.id = "profilePill"; a.href = "profile.html"; a.className = "nav-pill";
+      a.id = "profilePill"; a.href = "profile.html"; a.className = "nav-btn nav-btn-profile";
       a.innerHTML = `&#x1F464; ${user}`;
       nav.insertBefore(a, nav.firstChild);
     }
